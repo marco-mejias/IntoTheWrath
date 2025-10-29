@@ -58,11 +58,14 @@ char g_PrevCamera = CAM_ESFERICA;
 // FPV: física bàsica (gravetat + salt)
 // ─────────────────────────────────────────────────────────────────────────────
 float g_PlayerEye = 1.70f;   // alçada dels ulls
+float g_playerHeight = g_PlayerEye + 0.10f;
 float g_Gravity = -18.0f;  // m/s^2
 float g_JumpSpeed = 6.5f;   // velocitat inicial del salt (m/s)
 float g_VelY = 0.0f;   // velocitat vertical instantània
 bool  g_Grounded = true;   // toca a terra?
 bool  g_JumpHeld = false;   // per detectar el flanc de SPACE
+
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 /* Head bobbing (lleu moviment vertical del cap mentre camines) */
@@ -268,6 +271,9 @@ static GLuint g_SobelFBO = 0, g_SobelColor = 0, g_SobelDepth = 0;
 static int    g_FBOW = 0, g_FBOH = 0;
 static GLuint g_SobelProg = 0;          // programa GLSL del postproc
 
+// Debug of collisions
+GLuint g_DebugProgram = 0;
+
 // Controls “Obra Dinn” (valors per defecte)
 float g_BandaObraDinn = 0.05f;       // 0..~0.3 (no sempre usat; l’ensenyem a UI)
 bool  g_MapearPercepcion = true;        // pow(thr,2.2) a UI
@@ -276,8 +282,7 @@ bool  g_MapearPercepcion = true;        // pow(thr,2.2) a UI
 bool  g_ObraDinnOn = true;
 float g_UmbralObraDinn = 0.5f;
 float g_DitherAmp = 0.35f;
-bool  g_GammaMap = true;
-
+bool  g_GammaMap = true; 
 // Paràmetres de Sobel
 bool  g_SobelOn = true;
 bool  g_SobelEdgeOnly = false;
@@ -752,6 +757,61 @@ void InitGL()
 	EnterFPV();                 // crea sala, centra PV, captura ratolí, etc.
 	g_FPVInitApplied = true;
 	g_FPV = true;               // (redundant però explícit a efectes d’UI)
+
+	// ───────────────────────────────────────────────────────────────────────
+	// DEBUG SHADER: simple color-only shader for wireframes
+	// ───────────────────────────────────────────────────────────────────────
+	{
+		const char* vertSrc = R"(
+        #version 330 core
+        layout(location = 0) in vec3 aPos;
+        uniform mat4 uMVP;
+        void main() {
+            gl_Position = uMVP * vec4(aPos, 1.0);
+        }
+    )";
+
+		const char* fragSrc = R"(
+        #version 330 core
+        out vec4 FragColor;
+        uniform vec3 uColor;
+        void main() {
+            FragColor = vec4(uColor, 1.0);
+        }
+    )";
+
+		auto CompileShader = [](GLenum type, const char* src) -> GLuint {
+			GLuint sh = glCreateShader(type);
+			glShaderSource(sh, 1, &src, nullptr);
+			glCompileShader(sh);
+			GLint ok = 0; glGetShaderiv(sh, GL_COMPILE_STATUS, &ok);
+			if (!ok) {
+				char log[512];
+				glGetShaderInfoLog(sh, 512, nullptr, log);
+				fprintf(stderr, "[DEBUG SHADER] Compile error:\n%s\n", log);
+			}
+			return sh;
+			};
+
+		GLuint vs = CompileShader(GL_VERTEX_SHADER, vertSrc);
+		GLuint fs = CompileShader(GL_FRAGMENT_SHADER, fragSrc);
+
+		g_DebugProgram = glCreateProgram();
+		glAttachShader(g_DebugProgram, vs);
+		glAttachShader(g_DebugProgram, fs);
+		glLinkProgram(g_DebugProgram);
+
+		GLint linked = 0;
+		glGetProgramiv(g_DebugProgram, GL_LINK_STATUS, &linked);
+		if (!linked) {
+			char log[512];
+			glGetProgramInfoLog(g_DebugProgram, 512, nullptr, log);
+			fprintf(stderr, "[DEBUG SHADER] Link error:\n%s\n", log);
+		}
+
+		glDeleteShader(vs);
+		glDeleteShader(fs);
+	}
 }
 
 
@@ -918,6 +978,576 @@ void FPV_SetMouseCapture(bool capture)
 static float clampf(float x, float a, float b) { return x < a ? a : (x > b ? b : x); }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Col·lisions OBB:
+// ─────────────────────────────────────────────────────────────────────────────
+
+struct Capsule {
+	glm::vec3 p0;    // bottom sphere center
+	glm::vec3 p1;    // top sphere center
+	float radius;
+
+	Capsule() {
+		p0 = glm::vec3(0, -g_playerHeight * 0.5f + FPV_RADIUS, 0); // bottom
+		p1 = glm::vec3(0, g_playerHeight * 0.5f - FPV_RADIUS, 0); // top (a bit above eyes)
+		radius = FPV_RADIUS;
+	};
+};
+
+Capsule g_PlayerCap;
+
+struct OBB {
+	glm::vec3 center;
+	glm::vec3 halfSize;  // half-widths along each local axis
+	glm::mat3 orientation; // each column is a local axis (orthonormal)
+};
+
+// --- Closest point from a segment to an OBB
+
+// Returns squared distance from a line segment to an OBB
+float SegmentOBBDistance2(const glm::vec3& segA,
+	const glm::vec3& segB,
+	const OBB& box)
+{
+	// Move segment to OBB local space
+	glm::vec3 d = segB - segA; // segment direction
+	glm::vec3 segA_local = glm::transpose(box.orientation) * (segA - box.center);
+	glm::vec3 segB_local = glm::transpose(box.orientation) * (segB - box.center);
+	glm::vec3 dir_local = segB_local - segA_local;
+
+	// We'll sample a few points along the segment to approximate closest point
+	// For exact distance you'd use parameteric clamping, but this is fast & robust
+	const int STEPS = 8;
+	float minDist2 = FLT_MAX;
+
+	for (int i = 0; i <= STEPS; ++i) {
+		float t = float(i) / float(STEPS);
+		glm::vec3 p = segA_local + dir_local * t;
+
+		// Clamp to OBB bounds
+		glm::vec3 q = glm::clamp(p, -box.halfSize, box.halfSize);
+
+		float dist2 = glm::length2(p - q);
+		if (dist2 < minDist2) minDist2 = dist2;
+	}
+
+	return minDist2;
+}
+
+bool CapsuleOBBIntersect(const Capsule& cap, const OBB& box)
+{
+	float dist2 = SegmentOBBDistance2(cap.p0, cap.p1, box);
+	return dist2 <= (cap.radius * cap.radius);
+}
+
+OBB PropToOBB(const Prop& p)
+{
+	OBB box;
+	box.center = glm::vec3(p.M[3]);
+
+	// Columns contain rotation*scale. Extract their lengths (scales)
+	glm::vec3 col0 = glm::vec3(p.M[0]);
+	glm::vec3 col1 = glm::vec3(p.M[1]);
+	glm::vec3 col2 = glm::vec3(p.M[2]);
+
+	// halfSize = length * 0.5
+	box.halfSize = glm::vec3(glm::length(col0) * 0.5f,
+		glm::length(col1) * 0.5f,
+		glm::length(col2) * 0.5f);
+
+	// orientation: normalized axes (handle possible degenerate cases)
+	glm::vec3 ux = glm::length(col0) > 1e-8f ? col0 / glm::length(col0) : glm::vec3(1, 0, 0);
+	glm::vec3 uy = glm::length(col1) > 1e-8f ? col1 / glm::length(col1) : glm::vec3(0, 1, 0);
+	glm::vec3 uz = glm::length(col2) > 1e-8f ? col2 / glm::length(col2) : glm::vec3(0, 0, 1);
+
+	// Optionally orthonormalize (Gram-Schmidt) to be safe:
+	ux = glm::normalize(ux);
+	uy = glm::normalize(uy - ux * glm::dot(ux, uy));
+	uz = glm::normalize(glm::cross(ux, uy));
+	box.orientation = glm::mat3(ux, uy, uz);
+
+	return box;
+}
+
+bool CheckPlayerCollision(Capsule &playerCap, glm::vec3 nextPos, const float radius)
+{
+	playerCap.p0 += nextPos; // bottom
+	playerCap.p1 += nextPos; // top (a bit above eyes)
+
+	for (const auto& prop : g_Props) {
+		OBB box = PropToOBB(prop);
+		if (CapsuleOBBIntersect(playerCap, box))
+			return true;
+	}
+	return false;
+}
+
+// --- Deslizarse a lo largo de objetos
+
+static float ClosestPtSegmentOBB_Analytic(
+	const glm::vec3& a, const glm::vec3& b,
+	const glm::vec3& halfSize,
+	glm::vec3& outSeg, glm::vec3& outBox);
+
+void ResolveCapsuleOBBCollision(Capsule& cap, const OBB& box)
+{
+	// Transform capsule segment into box local space
+	glm::vec3 a = glm::transpose(box.orientation) * (cap.p0 - box.center);
+	glm::vec3 b = glm::transpose(box.orientation) * (cap.p1 - box.center);
+	glm::vec3 d = b - a;
+
+	// Find closest point on the box to the capsule’s segment
+	float bestT = 0.0f;
+	glm::vec3 closestOnBox;
+	glm::vec3 closestOnSegment;
+
+	// Approximate analytic method (fast and stable)
+	/*const int STEPS = 4;
+	float minDist2 = FLT_MAX;
+	for (int i = 0; i <= STEPS; ++i) {
+		float t = float(i) / STEPS;
+		glm::vec3 p = a + d * t;
+		glm::vec3 q = glm::clamp(p, -box.halfSize, box.halfSize);
+		float dist2 = glm::length2(p - q);
+		if (dist2 < minDist2) {
+			minDist2 = dist2;
+			bestT = t;
+			closestOnSegment = p;
+			closestOnBox = q;
+		}
+	}*/
+	float minDist2 = ClosestPtSegmentOBB_Analytic(a, b, box.halfSize, closestOnSegment, closestOnBox);
+
+	// Compute penetration depth
+	float dist = glm::sqrt(minDist2);
+	float penetration = cap.radius - dist;
+	if (penetration > 0.0f) {
+		// Get collision normal in local space
+		glm::vec3 normalLocal = dist > 1e-5f ? glm::normalize(closestOnSegment - closestOnBox)
+			: glm::vec3(0, 1, 0); // arbitrary up if very close
+
+		// Transform normal back to world space
+		glm::vec3 normalWorld = glm::normalize(box.orientation * normalLocal);
+
+		// --- Sliding adjustment ---
+		// Separate vertical and horizontal parts of the normal
+		glm::vec3 up(0, 1, 0);
+		float slope = glm::dot(normalWorld, up);
+
+		// If it's a floor or slope, only correct perpendicular to slope
+		if (slope > 0.3f) {
+			// Allow sliding: remove horizontal push component
+			normalWorld = glm::normalize(glm::mix(normalWorld, up, 0.5f));
+		}
+
+		// Push capsule outward along normal
+		glm::vec3 correction = normalWorld * penetration;
+
+		// Move both capsule points
+		cap.p0 += correction;
+		cap.p1 += correction;
+	}
+}
+
+bool ResolveCapsuleOBBCollision_Sliding(Capsule& cap, const OBB& box)
+{
+	// Transform capsule segment into box local space
+	glm::vec3 a = glm::transpose(box.orientation) * (cap.p0 - box.center);
+	glm::vec3 b = glm::transpose(box.orientation) * (cap.p1 - box.center);
+
+	glm::vec3 closestOnSegment, closestOnBox;
+	float minDist2 = ClosestPtSegmentOBB_Analytic(a, b, box.halfSize, closestOnSegment, closestOnBox);
+
+	float dist = glm::sqrt(minDist2);
+	float penetration = cap.radius - dist;
+	if (penetration <= 0.0f)
+		return false;
+
+	glm::vec3 normalLocal = dist > 1e-5f
+		? glm::normalize(closestOnSegment - closestOnBox)
+		: glm::vec3(0, 1, 0);
+	glm::vec3 normalWorld = glm::normalize(box.orientation * normalLocal);
+
+	// Handle slope gently
+	glm::vec3 up(0, 1, 0);
+	float slope = glm::dot(normalWorld, up);
+	if (slope > 0.3f)
+		normalWorld = glm::normalize(glm::mix(normalWorld, up, 0.5f));
+
+	glm::vec3 correction = normalWorld * penetration;
+	cap.p0 += correction;
+	cap.p1 += correction;
+
+	return true;
+}
+
+void CheckPlayerSlidingCollision(glm::vec3 nextPos, const float radius)
+{
+	Capsule playerCap;
+	float playerHeight = g_PlayerEye + 0.1f;
+	playerCap.p0 = nextPos + glm::vec3(0, -playerHeight * 0.6f + radius, 0); // bottom
+	playerCap.p1 = nextPos + glm::vec3(0, playerHeight * 0.5f - radius, 0);   // top (a bit above eyes)
+	playerCap.radius = radius;
+
+
+	g_PlayerCap = playerCap;
+
+	/*for (int i = 0; i < COLLISION_CHECKS_PER_FRAME; ++i) {
+		for (const auto& prop : g_Props) {
+			OBB box = PropToOBB(prop);
+			ResolveCapsuleOBBCollision(playerCap, box);
+		}
+	}*/
+
+	for (const auto& prop : g_Props) {
+		OBB box = PropToOBB(prop);
+		ResolveCapsuleOBBCollision_Sliding(playerCap, box);
+	}
+
+	g_FPVPos = 0.5f * (playerCap.p0 + playerCap.p1);;
+}
+
+bool ResolveCapsuleOBBSlidingCollision(Capsule& cap, const OBB& box)
+{
+	glm::vec3 a = glm::transpose(box.orientation) * (cap.p0 - box.center);
+	glm::vec3 b = glm::transpose(box.orientation) * (cap.p1 - box.center);
+
+	glm::vec3 closestOnSegment, closestOnBox;
+	float minDist2 = ClosestPtSegmentOBB_Analytic(a, b, box.halfSize, closestOnSegment, closestOnBox);
+
+	float dist = glm::sqrt(minDist2);
+	float penetration = cap.radius - dist;
+	if (penetration <= 0.0f)
+		return false;
+
+	glm::vec3 normalLocal = dist > 1e-5f
+		? glm::normalize(closestOnSegment - closestOnBox)
+		: glm::vec3(0, 1, 0);
+	glm::vec3 normalWorld = glm::normalize(box.orientation * normalLocal);
+
+	// Adjust normal for sliding (reduce vertical push)
+	glm::vec3 up(0, 1, 0);
+	float slope = glm::dot(normalWorld, up);
+	if (slope > 0.3f) {
+		normalWorld = glm::normalize(glm::mix(normalWorld, up, 0.5f));
+	}
+
+	glm::vec3 correction = normalWorld * penetration;
+	cap.p0 += correction;
+	cap.p1 += correction;
+
+	return true;
+}
+
+void CheckPlayerSlidingCollisionNew(glm::vec3 nextPos, const float radius)
+{
+	Capsule playerCap;
+	float playerHeight = g_PlayerEye + 0.1f;
+	playerCap.p0 = nextPos + glm::vec3(0, -playerHeight * 0.5f + radius, 0); // bottom
+	playerCap.p1 = nextPos + glm::vec3(0, playerHeight * 0.5f - radius, 0); // top
+	playerCap.radius = radius;
+
+	g_PlayerCap = playerCap; // For debug visualization
+
+	glm::vec3 totalCorrection(0.0f);
+	glm::vec3 totalSlideDir = glm::vec3(0.0f);
+
+	const int MAX_ITERS = 3;
+	for (int iter = 0; iter < MAX_ITERS; ++iter) {
+		bool collided = false;
+		glm::vec3 accumulatedNormal(0.0f);
+
+		for (const auto& prop : g_Props) {
+			OBB box = PropToOBB(prop);
+			glm::vec3 beforeP0 = playerCap.p0;
+			glm::vec3 beforeP1 = playerCap.p1;
+
+			bool collidedThis = ResolveCapsuleOBBSlidingCollision(playerCap, box);
+			if (collidedThis) {
+				collided = true;
+
+				glm::vec3 correction = (playerCap.p0 - beforeP0); // movement done by Resolve()
+				accumulatedNormal += glm::normalize(correction);
+			}
+		}
+
+		if (!collided)
+			break; // no more penetrations
+
+		// Average contact normal
+		if (glm::length2(accumulatedNormal) > 0.0f)
+			accumulatedNormal = glm::normalize(accumulatedNormal);
+
+		// Project the remaining motion along the collision plane
+		glm::vec3 up(0, 1, 0);
+		glm::vec3 move = nextPos - g_FPVPos;
+		float pushOut = glm::dot(move, accumulatedNormal);
+		move -= pushOut * accumulatedNormal;
+
+		// Update capsule segment
+		glm::vec3 offset = move * 0.5f;
+		playerCap.p0 = g_FPVPos + offset + glm::vec3(0, -playerHeight * 0.5f + radius, 0);
+		playerCap.p1 = g_FPVPos + offset + glm::vec3(0, playerHeight * 0.5f - radius, 0);
+	}
+
+	g_FPVPos = 0.5f * (playerCap.p0 + playerCap.p1);
+	g_PlayerCap = playerCap;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Mathematically Accurate Col·lisions OBB:
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Compute closest points between a segment (in box-local space) and an OBB
+// Returns squared distance, and fills closest points on both.
+//static float ClosestPtSegmentOBB_Analytic(
+//	const glm::vec3& a, const glm::vec3& b,
+//	const glm::vec3& halfSize,
+//	glm::vec3& outSeg, glm::vec3& outBox)
+//{
+//	glm::vec3 d = b - a;
+//	float bestT = 0.0f;
+//	glm::vec3 bestSeg, bestBox;
+//	float minDist2 = FLT_MAX;
+//
+//	// We'll solve this as a constrained minimization via projected gradient:
+//	// project segment point to box, then back to segment, a few times.
+//	glm::vec3 p = a; // start from segment start
+//
+//	for (int i = 0; i < 5; ++i) {
+//		// Closest on box to current point
+//		glm::vec3 q = glm::clamp(p, -halfSize, halfSize);
+//
+//		// Project q onto segment
+//		float t = glm::dot(q - a, d) / glm::dot(d, d);
+//		t = glm::clamp(t, 0.0f, 1.0f);
+//		glm::vec3 newP = a + d * t;
+//
+//		float dist2 = glm::length2(newP - q);
+//		if (dist2 < minDist2) {
+//			minDist2 = dist2;
+//			bestSeg = newP;
+//			bestBox = q;
+//			bestT = t;
+//		}
+//
+//		if (glm::length2(newP - p) < 1e-8f)
+//			break; // converged
+//
+//		p = newP;
+//	}
+//
+//	outSeg = bestSeg;
+//	outBox = bestBox;
+//	return minDist2;
+//}
+
+float ClosestPtSegmentOBB_Analytic(
+	const glm::vec3& a,
+	const glm::vec3& b,
+	const glm::vec3& e,
+	glm::vec3& outSeg,
+	glm::vec3& outBox)
+{
+	glm::vec3 d = b - a; // segment direction
+	float segLen2 = glm::dot(d, d);
+	if (segLen2 < 1e-8f) {
+		// Degenerate segment — use single point
+		outSeg = a;
+		outBox = glm::clamp(a, -e, e);
+		return glm::length2(outSeg - outBox);
+	}
+
+	// Start with unclamped t (param along segment)
+	float t = 0.0f;
+	glm::vec3 p = a;
+
+	// Iterative clamping for each axis — very cheap
+	for (int iter = 0; iter < 2; ++iter) {
+		// Clamp point p to box
+		glm::vec3 q = glm::clamp(p, -e, e);
+
+		// Compute projection of vector (q - a) onto segment
+		float tNew = glm::dot(q - a, d) / segLen2;
+		tNew = glm::clamp(tNew, 0.0f, 1.0f);
+
+		if (fabs(tNew - t) < 1e-4f) {
+			// Converged
+			outSeg = a + d * tNew;
+			outBox = q;
+			return glm::length2(outSeg - outBox);
+		}
+		t = tNew;
+		p = a + d * t;
+	}
+
+	outSeg = a + d * t;
+	outBox = glm::clamp(outSeg, -e, e);
+	return glm::length2(outSeg - outBox);
+}
+
+// Compute the closest squared distance between a segment and an OBB
+float SegmentOBBDistance2_Exact(const glm::vec3& segA,
+	const glm::vec3& segB,
+	const OBB& box)
+{
+	// Transform to OBB local space (so the box is axis-aligned)
+	glm::vec3 a = glm::transpose(box.orientation) * (segA - box.center);
+	glm::vec3 b = glm::transpose(box.orientation) * (segB - box.center);
+	glm::vec3 d = b - a; // direction of the segment in local space
+
+	// Start assuming t=0 (closest to 'a')
+	float t = 0.0f;
+	glm::vec3 closestPoint;
+
+	// Clamp segment parameter analytically against AABB faces
+	glm::vec3 p = a;
+	glm::vec3 boxMin = -box.halfSize;
+	glm::vec3 boxMax = box.halfSize;
+
+	// For each axis
+	for (int i = 0; i < 3; ++i) {
+		if (p[i] < boxMin[i] && d[i] != 0.0f) {
+			float tCandidate = (boxMin[i] - a[i]) / d[i];
+			if (tCandidate >= 0.0f && tCandidate <= 1.0f) {
+				glm::vec3 hit = a + tCandidate * d;
+				if (hit[(i + 1) % 3] >= boxMin[(i + 1) % 3] && hit[(i + 1) % 3] <= boxMax[(i + 1) % 3] &&
+					hit[(i + 2) % 3] >= boxMin[(i + 2) % 3] && hit[(i + 2) % 3] <= boxMax[(i + 2) % 3]) {
+					t = tCandidate;
+				}
+			}
+		}
+		else if (p[i] > boxMax[i] && d[i] != 0.0f) {
+			float tCandidate = (boxMax[i] - a[i]) / d[i];
+			if (tCandidate >= 0.0f && tCandidate <= 1.0f) {
+				glm::vec3 hit = a + tCandidate * d;
+				if (hit[(i + 1) % 3] >= boxMin[(i + 1) % 3] && hit[(i + 1) % 3] <= boxMax[(i + 1) % 3] &&
+					hit[(i + 2) % 3] >= boxMin[(i + 2) % 3] && hit[(i + 2) % 3] <= boxMax[(i + 2) % 3]) {
+					t = tCandidate;
+				}
+			}
+		}
+	}
+
+	// Compute closest point on the segment in local space
+	glm::vec3 segPoint = a + d * glm::clamp(t, 0.0f, 1.0f);
+
+	// Now find closest point on AABB to this point
+	glm::vec3 boxPoint = glm::clamp(segPoint, boxMin, boxMax);
+
+	// Compute squared distance between the two closest points
+	glm::vec3 diff = segPoint - boxPoint;
+	return glm::dot(diff, diff);
+}
+
+// Capsule–OBB intersection test
+bool CapsuleOBBIntersect_Exact(const Capsule& cap, const OBB& box)
+{
+	float dist2 = SegmentOBBDistance2_Exact(cap.p0, cap.p1, box);
+	return dist2 <= (cap.radius * cap.radius);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Collisions Debugging:
+// ─────────────────────────────────────────────────────────────────────────────
+
+//void DebugDrawOBB(const OBB& box, const glm::vec3& color)
+//{
+//	glUseProgram(g_DebugProgram); // a simple shader with uniform "uColor" and MVP matrices
+//	glUniform3fv(glGetUniformLocation(g_DebugProgram, "uColor"), 1, glm::value_ptr(color));
+//
+//	// Construct transform matrix
+//	glm::mat4 M(1.0f);
+//	M[0] = glm::vec4(box.orientation[0] * (box.halfSize.x * 2.0f), 0.0f);
+//	M[1] = glm::vec4(box.orientation[1] * (box.halfSize.y * 2.0f), 0.0f);
+//	M[2] = glm::vec4(box.orientation[2] * (box.halfSize.z * 2.0f), 0.0f);
+//	M[3] = glm::vec4(box.center, 1.0f);
+//
+//	glm::mat4 MVP = ProjectionMatrix * ViewMatrix * M;
+//	glUniformMatrix4fv(glGetUniformLocation(g_DebugProgram, "uMVP"), 1, GL_FALSE, glm::value_ptr(MVP));
+//
+//	glBindVertexArray(g_CubeVAO);
+//	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+//	glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+//	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+//	glBindVertexArray(0);
+//}
+
+void DebugDrawOBB(const OBB& box, const glm::vec3& color)
+{
+	glUseProgram(g_DebugProgram);
+
+	glm::mat4 M = glm::mat4(box.orientation);
+	M[3] = glm::vec4(box.center, 1.0);
+	glm::mat4 S = glm::scale(glm::mat4(1.0f), box.halfSize * 2.0f);
+	glm::mat4 MVP = ProjectionMatrix * ViewMatrix * M * S;
+
+	glUniformMatrix4fv(glGetUniformLocation(g_DebugProgram, "uMVP"), 1, GL_FALSE, glm::value_ptr(MVP));
+	glUniform3fv(glGetUniformLocation(g_DebugProgram, "uColor"), 1, glm::value_ptr(color));
+
+	glBindVertexArray(g_CubeVAO);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+}
+
+void DebugDrawCapsule(const Capsule& cap, const glm::vec3& color)
+{
+	glUseProgram(g_DebugProgram);
+	glUniform3fv(glGetUniformLocation(g_DebugProgram, "uColor"), 1, glm::value_ptr(color));
+
+	// Draw main cylinder (approximate as a scaled cube)
+	glm::vec3 mid = 0.5f * (cap.p0 + cap.p1);
+	glm::vec3 axis = glm::normalize(cap.p1 - cap.p0);
+	float height = glm::length(cap.p1 - cap.p0);
+
+	// Build rotation from Y-axis to capsule axis
+	glm::vec3 up(0, 1, 0);
+	glm::vec3 v = glm::cross(up, axis);
+	float c = glm::dot(up, axis);
+	glm::mat4 R = glm::mat4(1.0f);
+	if (glm::length(v) > 1e-5f)
+	{
+		float angle = acosf(glm::clamp(c, -1.0f, 1.0f));
+		R = glm::rotate(glm::mat4(1.0f), angle, glm::normalize(v));
+	}
+
+	// Cylinder-like cube
+	glm::mat4 M = glm::translate(glm::mat4(1.0f), mid) * R * glm::scale(glm::mat4(1.0f), glm::vec3(cap.radius * 2.0f, height, cap.radius * 2.0f));
+	glm::mat4 MVP = ProjectionMatrix * ViewMatrix * M;
+	glUniformMatrix4fv(glGetUniformLocation(g_DebugProgram, "uMVP"), 1, GL_FALSE, glm::value_ptr(MVP));
+
+	glBindVertexArray(g_CubeVAO);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+
+	// Two spheres (caps)
+	auto drawSphereAt = [&](const glm::vec3& pos) {
+		glm::mat4 S = glm::translate(glm::mat4(1.0f), pos) * glm::scale(glm::mat4(1.0f), glm::vec3(cap.radius * 2.0f));
+		glm::mat4 MVP2 = ProjectionMatrix * ViewMatrix * S;
+		glUniformMatrix4fv(glGetUniformLocation(g_DebugProgram, "uMVP"), 1, GL_FALSE, glm::value_ptr(MVP2));
+		glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0); // using cube VAO as placeholder
+		};
+
+	drawSphereAt(cap.p0);
+	drawSphereAt(cap.p1);
+
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glBindVertexArray(0);
+}
+
+static void DrawDebugColliders(const Capsule& playerCap)
+{
+	// Draw player capsule
+	DebugDrawCapsule(playerCap, glm::vec3(0.2f, 1.0f, 0.2f));
+
+	// Draw all props
+	for (const auto& prop : g_Props) {
+		OBB box = PropToOBB(prop);
+		DebugDrawOBB(box, glm::vec3(1.0f, 0.2f, 0.2f));
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // FPV_Update: entrada d’usuari, moviment, head-bobbing i física vertical
 // ─────────────────────────────────────────────────────────────────────────────
 void FPV_Update(GLFWwindow* window, float dt)
@@ -974,7 +1604,16 @@ void FPV_Update(GLFWwindow* window, float dt)
 
 	if (glm::dot(moveDir, moveDir) > 0.0f) {
 		moveDir = glm::normalize(moveDir);
-		g_FPVPos += moveDir * currentSpeed * dt;   // només X/Z aquí
+		//g_FPVPos += moveDir * currentSpeed * dt;   // només X/Z aquí
+		glm::vec3 nextPos = g_FPVPos + moveDir * currentSpeed * dt;
+
+		/*for (const auto& prop : g_Props) {
+			OBB box = PropToOBB(prop);
+			if (CapsuleOBBIntersect_Exact(g_PlayerCap, box))
+				bool hola = false;
+		}*/
+
+		CheckPlayerSlidingCollisionNew(nextPos, FPV_RADIUS);
 	}
 
 	// ── Head-Bobbing (vertical, lligat a distància) ────────────────────────
@@ -1021,6 +1660,10 @@ void FPV_Update(GLFWwindow* window, float dt)
 
 		if (!g_BobEnabled) g_BobOffY = 0.0f;
 	}
+
+	// ── Col·lisions amb objectes
+
+	
 
 	// ── Col·lisions laterals (marges de la sala) ───────────────────────────
 	g_FPVPos.x = glm::clamp(g_FPVPos.x, g_RoomXMin + FPV_RADIUS, g_RoomXMax - FPV_RADIUS);
@@ -1481,6 +2124,14 @@ void dibuixa_Escena()
 			// Props de test (si los has creado)
 			DrawProps(shader_programID);
 
+			if (g_DebugCollisions) {
+				DebugDrawCapsule(g_PlayerCap, glm::vec3(0.0f, 1.0f, 0.0f));
+				for (const auto& p : g_Props) {
+					OBB box = PropToOBB(p);
+					DebugDrawOBB(box, glm::vec3(1.0f, 0.0f, 0.0f));
+				}
+			}
+
 			// Restaurar cull
 			if (cullWas) glEnable(GL_CULL_FACE);
 		}
@@ -1855,8 +2506,7 @@ void draw_Menu_ImGui()
 				idx = (idx + 1) % N;
 				if (idx == 0) filled = true;
 
-				ImGui::PlotLines("OffY", buf, filled ? N : idx, 0, nullptr,
-					-0.08f, 0.08f, ImVec2(0, 60));
+				ImGui::PlotLines("OffY", buf, filled ? N : idx, 0, nullptr, -0.08f, 0.08f, ImVec2(0, 60));
 			}
 		}
 		else
@@ -7691,7 +8341,7 @@ int main(void)
 // Entorn VGI: Comprovació si tenim un Joystick / Gamepad connectat per anar a la funció de callback.
 //	if (glfwJoystickPresent(GLFW_JOYSTICK_1)) OnGamepadMove(GLFW_JOYSTICK_1,event);		// - Directly redirect GLFW joystick events
 	if (glfwJoystickIsGamepad(GLFW_JOYSTICK_1)) OnGamepadMove(GLFW_JOYSTICK_1, event);	// - Directly redirect GLFW gamepad events (equivalent)
-		else fprintf(stderr, "%s \n", "No hi ha Gamepad");
+		//else fprintf(stderr, "%s \n", "No hi ha Gamepad");
 
 // Poll for and process events
 		glfwPollEvents();

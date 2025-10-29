@@ -170,6 +170,9 @@
 
 	bool g_ShowRoom = true; // dibujar la habitación siempre, antes del objeto
 
+	// --- Debug de colisiones
+
+	bool g_DebugCollisions = true;
 
 // Entorn VGI: OBJECTE --> Corbes Bezier i BSpline
 	int npts_T;							// Número de punts de control de la corba en el Vector corbaSpline (<=MAX_PATH_SPLINE)

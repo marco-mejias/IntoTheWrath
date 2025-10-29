@@ -13,6 +13,10 @@ extern bool  g_GammaMap;
 #ifndef CONST_H
 #define CONST_H
 
+// --- Collisions
+
+#define COLLISION_CHECKS_PER_FRAME 3
+
 //--------------- VGI: Tipus de Càmera
 #define CAP ' '
 #define CAM_ESFERICA 'E'
