@@ -4,6 +4,9 @@
 // constants.h : Definició de constants compartides
 //				 CENtornVGIView.cpp, visualitzacio.cpp i escena.cpp
 
+
+extern bool g_Inspecciona;
+
 // ---- Obra Dinn / Dither (externs) 
 extern bool  g_ObraDinnOn;
 extern float g_UmbralObraDinn;
@@ -12,6 +15,8 @@ extern bool  g_GammaMap;
 
 #ifndef CONST_H
 #define CONST_H
+
+#include <vector>
 
 // --- Collisions
 
@@ -210,5 +215,39 @@ struct LLUM
 	GLfloat spotcoscutoff;	// Coseno de l'angle d'obertura de la font de llum restringida.
 	GLfloat spotexponent;	// Exponent que indica l'atenuació de la font del centre de l'eix a l'exterior, segons model de Warn.
 };
+
+// ---------------
+
+//AABB: Guardem eixos colisions
+struct AABB {
+	glm::vec3 min;
+	glm::vec3 max;
+};
+
+struct OBB {
+	glm::vec3 center;
+	glm::vec3 halfSize;  // half-widths along each local axis
+	glm::mat3 orientation; // each column is a local axis (orthonormal)
+};
+
+struct Capsule {
+	glm::vec3 p0;    // bottom sphere center
+	glm::vec3 p1;    // top sphere center
+	float radius;
+
+	//Capsule() {
+	//	p0 = glm:     :vec3(0, -g_playerHeight * 0.5f + FPV_RADIUS, 0); // bottom
+	//	p1 = glm::vec3(0, g_playerHeight * 0.5f - FPV_RADIUS, 0); // top (a bit above eyes)
+	//	radius = FPV_RADIUS;
+	//};
+};
+
+//Estructures
+struct Prop {
+	glm::mat4 M;
+	AABB hitbox;
+};
+
+extern std::vector<Prop> g_Props;
 
 #endif

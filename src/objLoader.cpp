@@ -48,6 +48,8 @@ const short unsigned int z = 2;
 
 _stdcall COBJModel::COBJModel()
 {
+	hitbox = false;
+	render = true;
 // Inicialitzar la llista de VAO's.
 	initVAOList_OBJ();
 }
@@ -57,6 +59,87 @@ _stdcall COBJModel::~COBJModel()
 // Eliminar els VAO's de la llista.
 	netejaVAOList_OBJ();
 }
+
+void loadObjPaths(const std::string& folder, std::vector<std::string> &paths)
+{
+	// Pattern: folder/*.obj
+	std::string searchPattern = folder + "/*.obj";
+
+	WIN32_FIND_DATAA findData;
+	HANDLE hFind = FindFirstFileA(searchPattern.c_str(), &findData);
+
+	if (hFind == INVALID_HANDLE_VALUE) {
+		printf("Error: Could not open file %s\n", folder.c_str());
+	}
+	else
+	{
+		do {
+			std::string filename = findData.cFileName;
+
+			// Build path format:
+			// "../scenario/filename.obj"
+			std::string formatted = folder + "/" + filename;
+
+			// Replace backslashes with forward slashes
+			/*for (char& c : formatted) {
+				if (c == '\\') c = '/';
+			}*/
+
+			paths.push_back(formatted);
+
+		} while (FindNextFileA(hFind, &findData));
+
+		FindClose(hFind);
+	}
+}
+
+void loadObjPathsRec(const std::string& folder, std::vector<std::pair<std::string, std::string>>& paths)
+{
+	printf("Recursively loading object's paths... \nChecking folder %s\n", folder.c_str());
+	// Search everything
+	std::string searchPattern = folder + "/*";
+
+	WIN32_FIND_DATAA findData;
+	HANDLE hFind = FindFirstFileA(searchPattern.c_str(), &findData);
+
+	if (hFind == INVALID_HANDLE_VALUE) {
+		printf("Error: Could not open path %s\n", folder.c_str());
+	}
+	else
+	{
+		do {
+			std::string filename = findData.cFileName;
+			
+			if (filename == "." || filename == "..")
+				continue;
+
+			// Build full path
+			std::string formatted = folder + "/" + filename;
+			
+			if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+				printf("Checking subfolder %s\n", formatted.c_str());
+				loadObjPathsRec(formatted, paths);
+			}
+			else
+			{
+				// Check if it's an .obj file
+				if (filename.size() > 4 && filename.substr(filename.size() - 4) == ".obj")
+				{
+					printf("Loading file %s\n", filename.c_str());
+					// Replace backslashes with forward slashes
+					/*for (char& c : formatted)
+						if (c == '\\') c = '/';*/
+					
+					paths.emplace_back(formatted, filename);
+				}
+			}
+		} while (FindNextFileA(hFind, &findData));
+
+		FindClose(hFind);
+	}
+}
+
+
 
 //bool _stdcall COBJModel::LoadModel(const char szFileName[],unsigned int iDisplayList)
 //GLuint _stdcall COBJModel::LoadModel(char *szFileName, int prim_Id)
@@ -1272,22 +1355,24 @@ void _stdcall COBJModel::MakePath(char szFileAndPath[])
 	szFileAndPath[0] = char('\0');
 }
 
-void _stdcall COBJModel::GetTokenParameter(char szString[], 
-								  const unsigned int iStrSize, FILE *hFile)
+void _stdcall COBJModel::GetTokenParameter(char szString[],
+	const unsigned int iStrSize,
+	FILE* hFile)
 {
-////////////////////////////////////////////////////////////////////////
-// Read the parameter of a token, remove space and newline character
-////////////////////////////////////////////////////////////////////////
+	if (!fgets(szString, iStrSize, hFile))
+		return;
 
-// Read the parameter after the token
-	fgets(szString, iStrSize, hFile);
+	size_t len = strlen(szString);
+	if (len > 0 && szString[len - 1] == '\n') {
+		szString[len - 1] = '\0';
+		--len;
+	}
 
-// Remove space before the token			
-	strcpy(szString, &szString[1]);
-
-// Remove newline character after the token
-	szString[strlen(szString) - 1] = char('\0');
+	if (len > 0) {
+		memmove(szString, szString + 1, len); 
+	}
 }
+
 
 static int CompareFaceByMaterial(const void *Arg1, const void *Arg2)
 {

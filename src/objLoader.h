@@ -66,6 +66,13 @@ struct Material
 class OBJLOADER_CLASS_DECL COBJModel  
 {
   public:
+	bool isHitbox() { return hitbox; };
+	void setAsHitbox() { hitbox = true; };
+	bool isRendering() { return render; };
+	void changeRendering(bool renderValue) { render = renderValue; };
+	void setName(std::string newName) { name = newName; };
+	std::string getName() { return name; };
+
 	void _stdcall DrawModel(int prim_Id);
 	int _stdcall LoadModel(char* szFileName);
 	_stdcall COBJModel();
@@ -102,6 +109,9 @@ private:
 	int vector_Materials[MAX_SIZE_VAOLIST];
 	CVAO VAOList_OBJ[MAX_SIZE_VAOLIST];
 	Material vMaterials[MAX_SIZE_VAOLIST];
+	bool hitbox;
+	bool render;
+	std::string name;
 
 // Funcions CVAO
 	void _stdcall initVAOList_OBJ();
@@ -109,6 +119,10 @@ private:
 	void _stdcall deleteVAOList_OBJ(GLint k);
 	void _stdcall draw_TriVAO_Object_OBJ(GLint k);
 };
+
+// Loads paths of all obj files
+void loadObjPaths(const std::string& folder, std::vector<std::string>& paths);
+void loadObjPathsRec(const std::string& folder, std::vector<std::pair<std::string, std::string>>& paths); // Recursive version. Loads subfolders too
 
 // Callback function for comparing two faces with qsort
 static int CompareFaceByMaterial(const void *Arg1, const void *Arg2);
