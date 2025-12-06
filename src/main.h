@@ -380,38 +380,3 @@ void APIENTRY glDebugOutput(GLenum source, GLenum type, GLuint id, GLenum severi
 std::future<void> fpv_future;
 bool fpv_started = false;
 std::atomic<bool> enter_fpv_carregat_async{ false }; // versió segura
-
-///////////////PALANCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-
-enum class EstatPalanques { OFF, JUGANT, SUPERAT };
-
-struct PalancaInfo {
-	glm::vec3 posicio;   // centre de la palanca
-	glm::vec3 eixRot;    // eix local de rotació (p.ex. (1,0,0))
-	float     angle;     // 0 = amunt, negatiu = avall
-	bool      baixada;   // true si està avall
-};
-
-EstatPalanques g_EstatPalancas = EstatPalanques::OFF;
-
-// 8 palanques
-constexpr int NUM_PALANQUES = 8;
-PalancaInfo g_Palanques[NUM_PALANQUES];
-
-// Models .OBJ (un per cada palanca per nom)
-COBJModel* g_PalancaModels[NUM_PALANQUES] = { nullptr };
-
-// Zona d’interacció (com el panell del Matapatos)
-glm::vec3 g_PalanquesParetCentre(0.0f);
-float     g_PalanquesRadiInteract = 2.0f;
-
-// El jugador pot interactuar amb el panell?
-bool g_PalanquesInteractuable = false;
-
-// Patró correcte (true = baixada, false = pujada)
-bool g_PalanquesSolucio[NUM_PALANQUES] = {
-	true, false, true, false,  true, false, true, false
-};
-
-// Per evitar donar la clau més d’una vegada
-bool g_PalanquesRewardDonat = false;

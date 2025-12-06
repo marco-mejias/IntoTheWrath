@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include "OBB.h"
 
 // Màxima mida vector VAOList
 #define MAX_SIZE_VAOLIST 125
@@ -66,12 +67,17 @@ struct Material
 class OBJLOADER_CLASS_DECL COBJModel  
 {
   public:
-	bool isHitbox() { return hitbox; };
+	bool isHitbox() const { return hitbox; };
 	void setAsHitbox() { hitbox = true; };
-	bool isRendering() { return render; };
+	AABB* getAABB() const { return AABBhitbox; };
+	OBB* getOBB() const { return OBBhitbox; };
+	bool isRendering() const { return render; };
 	void changeRendering(bool renderValue) { render = renderValue; };
 	void setName(std::string newName) { name = newName; };
 	std::string getName() { return name; };
+
+	void drawOBB(GLuint shader_programID, const glm::mat4& modelMatrix);
+	void updateOBBWorld();
 
 	void _stdcall DrawModel(int prim_Id);
 	int _stdcall LoadModel(char* szFileName);
@@ -83,6 +89,25 @@ class OBJLOADER_CLASS_DECL COBJModel
 	void _stdcall netejaVAOList_OBJ();
 	void _stdcall netejaTextures_OBJ();
 	void _stdcall draw_TriVAO_OBJ(GLuint sh_programID);
+
+
+// Get transformation matrix for the object
+	glm::mat4 modelMatrix() const {
+		glm::mat4 M(1.0f);
+		M = glm::translate(M, position);
+		//M = glm::rotate(M, glm::radians(rotation.x), glm::vec3(1, 0, 0));
+		//M = glm::rotate(M, glm::radians(rotation.y), glm::vec3(0, 1, 0));
+		//M = glm::rotate(M, glm::radians(rotation.z), glm::vec3(0, 0, 1));
+		M = M * glm::yawPitchRoll(rotation.y, rotation.x, rotation.z);
+		M = glm::scale(M, scale);
+		return M;
+	}
+
+	void rotateX(float deg) { rotation.x += glm::radians(deg); };
+	void rotateY(float deg) { rotation.y += glm::radians(deg); };
+	void rotateZ(float deg) { rotation.z += glm::radians(deg); };
+	void rescale(float factor) { scale = glm::vec3(factor); };
+	void move(float Xf, float Yf, float Zf) { position += glm::vec3(Xf, Yf, Zf); };
 
 private:
 	void _stdcall ReadNextString(char szString[], FILE *hStream);
@@ -104,14 +129,27 @@ private:
 	void _stdcall GetFileInfo(FILE *hStream, OBJFileInfo *Stat, const char szConstBasePath[]);
  	void _stdcall GenTexCoords();
 
+
 // CVAO
 	GLint numMaterials = 0;
 	int vector_Materials[MAX_SIZE_VAOLIST];
 	CVAO VAOList_OBJ[MAX_SIZE_VAOLIST];
 	Material vMaterials[MAX_SIZE_VAOLIST];
+	AABB* AABBhitbox;
+	OBB* OBBhitbox;
+	OBB* worldOBB;
 	bool hitbox;
 	bool render;
 	std::string name;
+
+	// Transformation matrix for the object
+	glm::vec3 position = glm::vec3(0.0f);
+	glm::vec3 rotation = glm::vec3(0.0f); // Euler angles in degrees
+	glm::vec3 scale = glm::vec3(1.0f);
+
+	//glm::vec3 center;
+
+	
 
 // Funcions CVAO
 	void _stdcall initVAOList_OBJ();

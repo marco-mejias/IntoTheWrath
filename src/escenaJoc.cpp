@@ -30,7 +30,7 @@ extern bool g_SobelMaskPass;
 // Dibuixa Skybox en forma de Cub, activant un shader propi.
 void dibuixa_Skybox(GLuint sk_programID, GLuint cmTexture, char eix_Polar, glm::mat4 MatriuProjeccio, glm::mat4 MatriuVista)
 {
-	if (g_SobelMaskPass) return; //IMPORTANT PER NO ACTIVAR EL SOBEL A TOT EL SKYBOX //PEPE
+	//if (g_SobelMaskPass) return; //IMPORTANT PER NO ACTIVAR EL SOBEL A TOT EL SKYBOX //PEPE
 
 	glm::mat4 ModelMatrix(1.0);
 
@@ -63,18 +63,6 @@ void dibuixa_Skybox(GLuint sk_programID, GLuint cmTexture, char eix_Polar, glm::
 
 	glDepthFunc(GL_LESS); // set depth function back to default
 }
-
-extern struct PalancaInfo {
-	glm::vec3 posicio;
-	glm::vec3 eixRot;
-	float angle;
-	bool baixada;
-};
-
-extern PalancaInfo g_Palanques[];
-extern COBJModel* g_PalancaModels[];
-extern bool g_PalanquesSolucio[];
-extern bool g_PalanquesRewardDonat;
 
 
 // dibuixa_EscenaGL: Dibuix de l'escena amb comandes GL
@@ -147,7 +135,7 @@ void dibuixa_EscenaGL(GLuint sh_programID, bool eix, GLuint axis_Id, CMask3D rei
 		{
 			if (!obj) continue;
 
-			if (obj->getName() == "barcouwu.obj")
+			if (obj->getName() == "Scenario.obj")
 			{
 				objecteOBJ = obj;
 				break;
@@ -156,7 +144,7 @@ void dibuixa_EscenaGL(GLuint sh_programID, bool eix, GLuint axis_Id, CMask3D rei
 
 		if (!objecteOBJ) {
 			fprintf(stderr,
-				"[INSPECCIO] No he trobat barcouwu.obj dins vObjectesOBJ (size=%zu)\n",
+				"[INSPECCIO] No he trobat barquitolo.obj dins vObjectesOBJ (size=%zu)\n",
 				vObjectesOBJ.size());
 			return; // o bé dibuixa l'escena normal, com vulguis
 		}
@@ -171,12 +159,14 @@ void dibuixa_EscenaGL(GLuint sh_programID, bool eix, GLuint axis_Id, CMask3D rei
 
 	else
 	{
-		ModelMatrix = MatriuTG;
-		// Pas ModelView Matrix a shader
-		glUniformMatrix4fv(glGetUniformLocation(sh_programID, "modelMatrix"), 1, GL_FALSE, &ModelMatrix[0][0]);
-		NormalMatrix = transpose(inverse(MatriuVista * ModelMatrix));
-		// Pas NormalMatrix a shader
-		glUniformMatrix4fv(glGetUniformLocation(sh_programID, "normalMatrix"), 1, GL_FALSE, &NormalMatrix[0][0]);
+		//ModelMatrix = MatriuTG;
+		//// Pas ModelView Matrix a shader
+		//glUniformMatrix4fv(glGetUniformLocation(sh_programID, "modelMatrix"), 1, GL_FALSE, &ModelMatrix[0][0]);
+		//
+		//
+		//NormalMatrix = transpose(inverse(MatriuVista * ModelMatrix));
+		//// Pas NormalMatrix a shader
+		//glUniformMatrix4fv(glGetUniformLocation(sh_programID, "normalMatrix"), 1, GL_FALSE, &NormalMatrix[0][0]);
 
 		// Definir característiques material de cada punt
 		SeleccionaColorMaterial(sh_programID, col_object, sw_mat);
@@ -199,39 +189,16 @@ void dibuixa_EscenaGL(GLuint sh_programID, bool eix, GLuint axis_Id, CMask3D rei
 				continue;
 			}
 
-			bool esPalanca = false;
+			
+			// Pas ModelView Matrix a shader
+			ModelMatrix = objecteOBJ->modelMatrix();  // DIFFERENT PER OBJECT
+			glUniformMatrix4fv(glGetUniformLocation(sh_programID, "modelMatrix"), 1, GL_FALSE, &ModelMatrix[0][0]);
 
-			// --- Cas especial: palanques ---
-			for (int i = 0; i < 8; ++i)
-			{
-				if (objecteOBJ == g_PalancaModels[i])
-				{
-					esPalanca = true;
+			NormalMatrix = transpose(inverse(MatriuVista * ModelMatrix));
+			// Pas NormalMatrix a shader
+			glUniformMatrix4fv(glGetUniformLocation(sh_programID, "normalMatrix"), 1, GL_FALSE, &NormalMatrix[0][0]);
 
-					// Partim de la transformació global i només afegim la rotació
-					glm::mat4 M = MatriuTG;
-
-					// Si el model té l’eix al centre com dius, només cal rotar
-					M = glm::rotate(M, g_Palanques[i].angle, g_Palanques[i].eixRot);
-
-					glm::mat4 NM = glm::transpose(glm::inverse(MatriuVista * M));
-
-					glUniformMatrix4fv(glGetUniformLocation(sh_programID, "modelMatrix"), 1, GL_FALSE, &M[0][0]);
-					glUniformMatrix4fv(glGetUniformLocation(sh_programID, "normalMatrix"), 1, GL_FALSE, &NM[0][0]);
-
-					objecteOBJ->draw_TriVAO_OBJ(sh_programID);
-					break; // ja hem dibuixat aquesta palanca
-				}
-			}
-
-			if (!esPalanca)
-			{
-				// Objectes normals → transformació original
-				glUniformMatrix4fv(glGetUniformLocation(sh_programID, "modelMatrix"), 1, GL_FALSE, &ModelMatrix[0][0]);
-				glUniformMatrix4fv(glGetUniformLocation(sh_programID, "normalMatrix"), 1, GL_FALSE, &NormalMatrix[0][0]);
-
-				objecteOBJ->draw_TriVAO_OBJ(sh_programID);
-			}
+			objecteOBJ->draw_TriVAO_OBJ(sh_programID);	// Dibuixar VAO a pantalla
 		}
 
 	}

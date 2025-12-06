@@ -1,6 +1,8 @@
 #ifndef COLLISIONS_H
 #define COLLISIONS_H
 
+#include "objLoader.h"
+
 OBB PropToOBB(const Prop& p);
 
 float ClosestPtSegmentOBB_Analytic(
@@ -12,6 +14,6 @@ float ClosestPtSegmentOBB_Analytic(
 
 bool ResolveCapsuleOBBSlidingCollision(Capsule& cap, const OBB& box);
 
-void CheckPlayerSlidingCollisionNew(glm::vec3 nextPos, const float radius,glm::vec3& currentPos, float eyesHeight);
+void CheckPlayerSlidingCollisionNew(glm::vec3 nextPos, const float radius, glm::vec3& currentPos, float eyesHeight, std::vector<COBJModel*> vHitboxOBJ);
 
 #endif

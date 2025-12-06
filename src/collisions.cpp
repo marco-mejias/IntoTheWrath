@@ -37,13 +37,13 @@ OBB PropToOBB(const Prop& p)
 
 // --- Deslizarse a lo largo de objetos
 
-bool ResolveCapsuleOBBSlidingCollision(Capsule& cap, const OBB& box)
+bool ResolveCapsuleOBBSlidingCollision(Capsule& cap, const OBB* box)
 {
-	glm::vec3 a = glm::transpose(box.orientation) * (cap.p0 - box.center);
-	glm::vec3 b = glm::transpose(box.orientation) * (cap.p1 - box.center);
+	glm::vec3 a = glm::transpose(box->orientation) * (cap.p0 - box->center);
+	glm::vec3 b = glm::transpose(box->orientation) * (cap.p1 - box->center);
 
 	glm::vec3 closestOnSegment, closestOnBox;
-	float minDist2 = ClosestPtSegmentOBB_Analytic(a, b, box.halfSize, closestOnSegment, closestOnBox);
+	float minDist2 = ClosestPtSegmentOBB_Analytic(a, b, box->halfSize, closestOnSegment, closestOnBox);
 
 	float dist = glm::sqrt(minDist2);
 	float penetration = cap.radius - dist;
@@ -53,7 +53,7 @@ bool ResolveCapsuleOBBSlidingCollision(Capsule& cap, const OBB& box)
 	glm::vec3 normalLocal = dist > 1e-5f
 		? glm::normalize(closestOnSegment - closestOnBox)
 		: glm::vec3(0, 1, 0);
-	glm::vec3 normalWorld = glm::normalize(box.orientation * normalLocal);
+	glm::vec3 normalWorld = glm::normalize(box->orientation * normalLocal);
 
 	// Adjust normal for sliding (reduce vertical push)
 	glm::vec3 up(0, 1, 0);
@@ -69,7 +69,9 @@ bool ResolveCapsuleOBBSlidingCollision(Capsule& cap, const OBB& box)
 	return true;
 }
 
-void CheckPlayerSlidingCollisionNew(glm::vec3 nextPos, const float radius, glm::vec3& currentPos, float eyesHeight)
+void CheckPlayerSlidingCollisionNew(glm::vec3 nextPos, const float radius, 
+	glm::vec3& currentPos, float eyesHeight, 
+	std::vector<COBJModel*> vHitboxOBJ)
 {
 	Capsule playerCap;
 	float playerHeight = eyesHeight + 0.1f;
@@ -85,18 +87,18 @@ void CheckPlayerSlidingCollisionNew(glm::vec3 nextPos, const float radius, glm::
 		bool collided = false;
 		glm::vec3 accumulatedNormal(0.0f);
 
-		for (const auto& prop : g_Props) {
-			OBB box = PropToOBB(prop);
+		for (COBJModel* hitbox : vHitboxOBJ) {
 			glm::vec3 beforeP0 = playerCap.p0;
 			glm::vec3 beforeP1 = playerCap.p1;
 
-			bool collidedThis = ResolveCapsuleOBBSlidingCollision(playerCap, box);
+			bool collidedThis = ResolveCapsuleOBBSlidingCollision(playerCap, hitbox->getOBB());
 			if (collidedThis) {
 				collided = true;
 
 				glm::vec3 correction = (playerCap.p0 - beforeP0); // movement done by Resolve()
 				accumulatedNormal += glm::normalize(correction);
 			}
+			
 		}
 
 		if (!collided)

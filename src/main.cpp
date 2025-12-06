@@ -35,51 +35,6 @@
 
 extern GLFWwindow* window;
 
-enum class TipusInteraccioContext {
-	NONE = 0,
-	BAIXA_A_MITJA,
-	MITJA_A_BAIXA,
-	MITJA_A_SUPERIOR,
-	SUPERIOR_A_MITJA,
-	SUPERIOR_A_TIMO,
-	TIMO_A_SUPERIOR,
-	ESCAPAR_BARCA          // ho deixem per més endavant (barca final)
-};
-
-TipusInteraccioContext g_InteraccioContext = TipusInteraccioContext::NONE;
-bool g_InteraccioDisponible = false;
-
-// POSICIONS DE LES ZONES DE TP (X,Y,Z) – centres aproximats
-glm::vec3 g_PosZonaBaixaAMitja(-8.71f, 1.70f, 2.82f);
-float     g_RadiZonaBaixaAMitja = 1.5f;
-
-glm::vec3 g_PosZonaMitjaABaixa(-9.73f, 5.20f, 0.27f);
-float     g_RadiZonaMitjaABaixa = 1.5f;
-
-glm::vec3 g_PosZonaMitjaASuperior(11.52f, 5.20f, -0.73f);
-float     g_RadiZonaMitjaASuperior = 1.5f;
-
-glm::vec3 g_PosZonaSuperiorAMitja(9.80f, 8.70f, 1.55f);
-float     g_RadiZonaSuperiorAMitja = 1.5f;
-
-glm::vec3 g_PosZonaSuperiorATimo(-4.81f, 8.70f, -5.94f);
-float     g_RadiZonaSuperiorATimo = 1.5f;
-
-glm::vec3 g_PosZonaTimoASuperior(-9.69f, 11.70f, -5.17f);
-float     g_RadiZonaTimoASuperior = 1.5f;
-
-// DESTINS de cada zona (on apareixerà el jugador)
-glm::vec3 g_DestZonaBaixaAMitja(-9.73f, 5.20f, 0.27f);
-glm::vec3 g_DestZonaMitjaABaixa(-8.71f, 1.70f, 2.82f);
-
-glm::vec3 g_DestZonaMitjaASuperior(9.80f, 8.70f, 1.55f);
-glm::vec3 g_DestZonaSuperiorAMitja(11.52f, 5.20f, -0.73f);
-
-glm::vec3 g_DestZonaSuperiorATimo(-9.69f, 11.70f, -5.17f);
-glm::vec3 g_DestZonaTimoASuperior(-4.81f, 8.70f, -5.94f);
-
-
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Crosshair (punt de mira HUD)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -211,7 +166,7 @@ constexpr int MATAPATOS_HIT_HAND_ANIM = 0;
 float g_TempsMatapatos = 0.0f;
 float g_DuradaMatapatos = 30.0f;  // Segons de partida
 int   g_PuntsMatapatos = 0;
-int   g_PuntsObjectiuMatapatos = 6; // Punts necessaris per "guanyar"
+int   g_PuntsObjectiuMatapatos = 5; // Punts necessaris per "guanyar"
 // Si true, el jugador ha superat el minijoc (clau per l'escape room)
 bool g_MatapatosSuperat = false;
 
@@ -223,40 +178,8 @@ glm::vec3 g_MataParetCentre(0.0f); // El definirem a InitMatapatos segons la sal
 float     g_MataAmplada = 1.0f;
 float     g_MataAlcada = 1.5f;
 
-// Zoom / "lean" immersiu quan juguem al Matapatos
-float g_MatapatosZoomFactor = 0.0f;    // 0 = normal, 1 = zoom complet
-float g_MatapatosZoomSpeed = 3.0f;    // velocitat d'interpolació (Hz aproximat)
-float g_MatapatosZoomDist = 0.70f;   // metres que ens acostem a la finestra
-
-
-// Finestra del minijoc (centre aproximat a l'interior del vaixell)
-glm::vec3 g_MatapatosWindowCentre(0.0f);
-
-// El jugador pot interactuar amb el minijoc?
-bool  g_MatapatosInteractuable = false;
-
-// HUD de recompensa (missatge "Has aconseguit una destral!")
-bool   g_MatapatosShowRewardMsg = false;
-double g_MatapatosRewardMsgStart = 0.0;
-float  g_MatapatosRewardMsgDurada = 5.0f; // segons
-
 // Per detectar el flanc de clic esquerre només per al minijoc
 static bool g_MouseEsqPrevMatapatos = false;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Interaccions d'entorn basades en inventari (portes, escales, barca, etc.)
-// ─────────────────────────────────────────────────────────────────────────────
-
-// POSICIONS DE LES ZONES (X,Y,Z) – ajusta aquestes coords al teu escenari
-glm::vec3 g_PosZonaBaixarPlantaBaixa(0.0f, 1.7f, 5.0f);  // porta/trapa a planta baixa
-float     g_RadiZonaBaixarPlantaBaixa = 1.5f;
-
-glm::vec3 g_PosZonaPujarPlantaSuperior(-3.0f, 4.7f, -2.0f);  // escales cap a coberta
-float     g_RadiZonaPujarPlantaSuperior = 1.5f;
-
-glm::vec3 g_PosZonaBarca(-8.0f, 7.7f, -10.0f);  // zona de la barca a coberta
-float     g_RadiZonaBarca = 2.0f;
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INVENTARI
@@ -426,16 +349,6 @@ void AfegirItemInventari(const std::string& id,
 	fprintf(stderr, "[INVENTARI] Afegit item: %s (tex=%u)\n",
 		id.c_str(), nou.texIcon);
 }
-
-// Comprova si l'inventari conte un item amb aquest id
-bool InventariTeItem(const std::string& id)
-{
-	for (const auto& it : g_Inventari) {
-		if (it.id == id) return true;
-	}
-	return false;
-}
-
 
 
 void LoadHandAnimationSheet(int id, float srcFPS, int cols, int rows, int frameCount)
@@ -681,10 +594,6 @@ double      g_TimePrev = 0.0;
 float g_SprintMult = 2.0f;  
 bool  g_IsSprinting = false;  
 
-//chimiya
-
-bool g_FVP_move = true;
-
 // Llanterna amb tecla F
 bool g_HeadlightEnabled = true;
 bool g_FKeyPrev = false; 
@@ -731,8 +640,8 @@ void DibuixaCrosshair()
 	if (act_state != GameState::GAME || !g_FPV)
 		return;
 
-	// Només quan el minijoc està en marxa
-	if (g_EstatMatapatos != EstatMatapatos::JUGANT)
+	// Només quan el minijoc Matapatos està actiu (JUGANT o ACABAT)
+	if (g_EstatMatapatos == EstatMatapatos::OFF)
 		return;
 
 	ImGuiIO& io = ImGui::GetIO();
@@ -769,90 +678,17 @@ void DibuixaHUDMatapatos()
 	if (act_state != GameState::GAME || !g_FPV)
 		return;
 
+	if (g_EstatMatapatos == EstatMatapatos::OFF)
+		return;
+
 	ImGuiIO& io = ImGui::GetIO();
 
-	// ─────────────────────────────────────────────────────────────
-	// 1) Missatge de recompensa (has aconseguit una destral)
-	// ─────────────────────────────────────────────────────────────
-	if (g_MatapatosShowRewardMsg) {
-		double now = glfwGetTime();
-		if (now - g_MatapatosRewardMsgStart < g_MatapatosRewardMsgDurada) {
-
-			ImGui::SetNextWindowPos(
-				ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.18f),
-				ImGuiCond_Always,
-				ImVec2(0.5f, 0.0f)
-			);
-
-			ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar
-				| ImGuiWindowFlags_NoResize
-				| ImGuiWindowFlags_NoMove
-				| ImGuiWindowFlags_NoScrollbar
-				| ImGuiWindowFlags_AlwaysAutoResize
-				| ImGuiWindowFlags_NoSavedSettings;
-
-			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
-			ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.85f));
-			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.9f, 0.4f, 1.0f));
-
-			ImGui::Begin("HUD_Matapatos_Reward", nullptr, flags);
-			ImGui::Text("Has aconseguit una destral!");
-			ImGui::End();
-
-			ImGui::PopStyleColor(2);
-			ImGui::PopStyleVar();
-		}
-		else {
-			g_MatapatosShowRewardMsg = false;
-		}
-	}
-
-	// ─────────────────────────────────────────────────────────────
-	// 2) Prompt d'interaccio: minijoc OFF, però finestra mirant-se
-	// ─────────────────────────────────────────────────────────────
-	if (g_EstatMatapatos == EstatMatapatos::OFF &&
-		g_MatapatosInteractuable &&
-		!g_MatapatosSuperat)
-	{
-		ImGui::SetNextWindowPos(
-			ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.90f),
-			ImGuiCond_Always,
-			ImVec2(0.5f, 0.5f)
-		);
-
-		ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar
-			| ImGuiWindowFlags_NoResize
-			| ImGuiWindowFlags_NoMove
-			| ImGuiWindowFlags_NoScrollbar
-			| ImGuiWindowFlags_AlwaysAutoResize
-			| ImGuiWindowFlags_NoSavedSettings;
-
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
-		ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.75f));
-		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
-
-		ImGui::Begin("HUD_Matapatos_Prompt", nullptr, flags);
-		ImGui::Text("Prem E per interactuar");
-		ImGui::End();
-
-		ImGui::PopStyleColor(2);
-		ImGui::PopStyleVar();
-
-		// No mostrem HUD de temps/punts si només estem en mode "mirant"
-		return;
-	}
-
-	// ─────────────────────────────────────────────────────────────
-	// 3) HUD complet només mentre estem jugant
-	// ─────────────────────────────────────────────────────────────
-	if (g_EstatMatapatos != EstatMatapatos::JUGANT)
-		return;
-
 	ImGui::SetNextWindowPos(
-		ImVec2(20.0f, io.DisplaySize.y * 0.82f),
+		ImVec2(20.0f, io.DisplaySize.y * 0.82f),   
 		ImGuiCond_Always,
-		ImVec2(0.0f, 0.5f)
+		ImVec2(0.0f, 0.5f)                        
 	);
+
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
@@ -868,104 +704,41 @@ void DibuixaHUDMatapatos()
 		| ImGuiWindowFlags_NoScrollbar
 		| ImGuiWindowFlags_AlwaysAutoResize
 		| ImGuiWindowFlags_NoSavedSettings
-		| ImGuiWindowFlags_NoInputs;
+		| ImGuiWindowFlags_NoInputs;  
 
 	ImGui::Begin("HUD_Matapatos", nullptr, flags);
 
-	float tempsRestant = glm::max(0.0f, g_DuradaMatapatos - g_TempsMatapatos);
-	ImGui::Text("MATAPATOS");
-	ImGui::Separator();
-	ImGui::Text("Temps: %.1f s", tempsRestant);
-	ImGui::Text("Punts: %d / %d", g_PuntsMatapatos, g_PuntsObjectiuMatapatos);
+	if (g_EstatMatapatos == EstatMatapatos::JUGANT) {
+		float tempsRestant = glm::max(0.0f, g_DuradaMatapatos - g_TempsMatapatos);
+		ImGui::Text("MATAPATOS");
+		ImGui::Separator();
+		ImGui::Text("Temps: %.1f s", tempsRestant);
+		ImGui::Text("Punts: %d / %d", g_PuntsMatapatos, g_PuntsObjectiuMatapatos);
 
-	ImGui::Dummy(ImVec2(0.0f, 4.0f));
-	ImGui::TextDisabled("Q per sortir del minijoc.");
+		ImGui::Dummy(ImVec2(0.0f, 4.0f));
+		ImGui::TextDisabled("Prem Q per sortir del minijoc.");
+	}
+	else if (g_EstatMatapatos == EstatMatapatos::ACABAT) {
+		ImGui::Text("MATAPATOS - FI DE PARTIDA");
+		ImGui::Separator();
+		ImGui::Text("Punts: %d / %d", g_PuntsMatapatos, g_PuntsObjectiuMatapatos);
+
+		if (g_MatapatosSuperat) {
+			ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), "RESULTAT: VICTORIA!");
+		}
+		else {
+			ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "RESULTAT: DERROTA");
+		}
+
+		ImGui::Dummy(ImVec2(0.0f, 4.0f));
+		ImGui::TextDisabled("Prem M per tornar a jugar, Q per sortir.");
+	}
 
 	ImGui::End();
 
 	ImGui::PopStyleColor(4);
 	ImGui::PopStyleVar(2);
 }
-// ─────────────────────────────────────────────────────────────────────────────
-// HUD d'interaccio contextual (portes / escales / barca)
-// ─────────────────────────────────────────────────────────────────────────────
-
-void DibuixaHUDInteraccioContextual()
-{
-	// Si no hi ha res interactuable, no mostrem res
-	if (!g_InteraccioDisponible)
-		return;
-
-	// Només en joc i en FPV
-	if (act_state != GameState::GAME || !g_FPV)
-		return;
-
-	// No molestar si tenim el minijoc obert o l’inventari
-	if (g_EstatMatapatos == EstatMatapatos::JUGANT)
-		return;
-	if (g_InventariObert)
-		return;
-
-	ImGuiIO& io = ImGui::GetIO();
-
-	// A baix al centre (igual que el prompt del Matapatos)
-	ImGui::SetNextWindowPos(
-		ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.90f),
-		ImGuiCond_Always,
-		ImVec2(0.5f, 0.5f)
-	);
-
-	ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar
-		| ImGuiWindowFlags_NoResize
-		| ImGuiWindowFlags_NoMove
-		| ImGuiWindowFlags_NoScrollbar
-		| ImGuiWindowFlags_AlwaysAutoResize
-		| ImGuiWindowFlags_NoSavedSettings;
-
-	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
-	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.75f));
-	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
-
-	ImGui::Begin("HUD_InteraccioContextual", nullptr, flags);
-
-	const char* text = "Prem E per interactuar";
-
-	switch (g_InteraccioContext)
-	{
-	case TipusInteraccioContext::BAIXA_A_MITJA:
-		text = "Prem E per pujar a la planta mitja";
-		break;
-	case TipusInteraccioContext::MITJA_A_BAIXA:
-		text = "Prem E per baixar a la planta inferior";
-		break;
-	case TipusInteraccioContext::MITJA_A_SUPERIOR:
-		text = "Prem E per pujar a la coberta";
-		break;
-	case TipusInteraccioContext::SUPERIOR_A_MITJA:
-		text = "Prem E per baixar a la planta mitja";
-		break;
-	case TipusInteraccioContext::SUPERIOR_A_TIMO:
-		text = "Prem E per pujar al pis del timó";
-		break;
-	case TipusInteraccioContext::TIMO_A_SUPERIOR:
-		text = "Prem E per baixar a la coberta";
-		break;
-	case TipusInteraccioContext::ESCAPAR_BARCA:
-		text = "Prem E per pujar a la barca i escapar";
-		break;
-	default:
-		break;
-	}
-
-	ImGui::Text("%s", text);
-
-	ImGui::End();
-	ImGui::PopStyleColor(2);
-	ImGui::PopStyleVar();
-}
-
-
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Dibuix de l'Inventari (ImGui) 
@@ -1172,6 +945,19 @@ void carregarEscenaInicialMultiObj()
 		}
 		else
 		{
+			if (ObLoaded->getName() == "palanca_prueba.obj")
+			{
+				COBJModel* duplicated = ::new COBJModel;
+				(*duplicated) = (*ObLoaded);
+				duplicated->move(5.0f, 0.0f, 0.0f);
+				duplicated->rescale(20.0f);
+
+				ObLoaded->rotateZ(180.0f);
+				ObLoaded->rotateX(-60.0f);
+				ObLoaded->rescale(20.0f);
+				ObLoaded->move(0.0f, 2.2f, -1.0f);
+				vObOBJ.emplace_back(duplicated);
+			}
 			vObOBJ.emplace_back(ObLoaded);
 		}
 		delete[] nomFitxer;
@@ -1219,7 +1005,6 @@ static void EnterFPV() {
 	projeccio = PERSPECT;
 
 	g_ShowRoom = true;
-
 
 	carregarEscenaInicialMultiObj();
 	OnVistaSkyBox();
@@ -1271,8 +1056,6 @@ bool  g_ObraDinnOn = true;
 float g_UmbralObraDinn = 0.63f;
 float g_DitherAmp = 0.35f;
 bool  g_GammaMap = true; 
-float g_UmbralObraDinnSky = 0.80f;   // umbral específic per al skybox
-
 
 // Paràmetres de Sobel
 bool  g_SobelOn = true;
@@ -1296,90 +1079,6 @@ static GLuint g_CubeVAO = 0, g_CubeVBO = 0, g_CubeEBO = 0;
 std::vector<Prop> g_Props;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Minijoc PALANQUES
-// ─────────────────────────────────────────────────────────────────────────────
-
-
-
-void ComprovaSolucioPalancas()
-{
-	for (int i = 0; i < NUM_PALANQUES; ++i) {
-		if (g_Palanques[i].baixada != g_PalanquesSolucio[i])
-			return;  // aún no está bien
-	}
-
-	// Si llegamos aquí, patrón correcto
-	if (!g_PalanquesRewardDonat) {
-		AfegirItemInventari(
-			"clau_palanques",
-			"Clau de les palanques",
-			"Una clau que has aconseguit fent la combinacio correcte de palanques."
-		);  // usa tu sistema de inventario 
-		g_PalanquesRewardDonat = true;
-		fprintf(stderr, "[PALANCAS] Combinacio correcta! Clau afegida.\n");
-	}
-}
-
-void TogglePalanca(int i)
-{
-	fprintf(stderr, "[PALANCAS] TogglePalanca(%d)\n", i);
-
-	g_Palanques[i].baixada = !g_Palanques[i].baixada;
-	g_Palanques[i].angle = g_Palanques[i].baixada ? glm::radians(-45.0f) : 0.0f;
-
-	fprintf(stderr, "[PALANCAS] Palanca %d -> %s\n",
-		i, g_Palanques[i].baixada ? "baixada" : "pujada");
-
-	ComprovaSolucioPalancas();
-}
-
-void InitPalancas()
-{
-	// Coloca aquí las posiciones REALES de cOada palanca en el mundo
-	// Ejemplo: en fila, ajusta a tu escena
-	glm::vec3 base(-2.0f, 4.7f, -5.0f);
-	float dx = 0.4f;
-
-	for (int i = 0; i < NUM_PALANQUES; ++i) {
-		g_Palanques[i].posicio = base + glm::vec3(i * dx, 0.0f, 0.0f);
-		g_Palanques[i].eixRot = glm::vec3(1.0f, 0.0f, 0.0f);
-		g_Palanques[i].baixada = false;
-		g_Palanques[i].angle = 0.0f;
-	}
-
-
-
-	// --- NUEVO: centro del panel de palancas ---
-	glm::vec3 centre(0.0f);
-	for (int i = 0; i < NUM_PALANQUES; ++i)
-		centre += g_Palanques[i].posicio;
-
-	centre /= float(NUM_PALANQUES);
-	g_PalanquesParetCentre = centre;
-
-	// si desde el jugador te cuesta que se active, sube esto a 3.0f o 3.5f
-	g_PalanquesRadiInteract = 2.5f;
-
-	// Asociación models .obj -> palanca[i] (ya lo tienes aquí debajo)
-	for (COBJModel* obj : vObOBJ) {
-		if (!obj) continue;
-		const std::string& name = obj->getName();
-
-		for (int i = 0; i < NUM_PALANQUES; ++i) {
-			std::string expected =
-				(i == 0) ? "palanca.obj" : ("palanca" + std::to_string(i) + ".obj");
-			if (name == expected) {
-				g_PalancaModels[i] = obj;
-				fprintf(stderr, "[PALANCAS] Model %s -> index %d\n",
-					name.c_str(), i);
-			}
-		}
-	}
-}
-
-
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Inicialització del minijoc Matapatos
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1391,10 +1090,6 @@ void InitMatapatos()
 	g_PuntsMatapatos = 0;
 
 	g_MataParetCentre = glm::vec3(-6.8f, 4.7f, -8.00f);
-	// Centre aproximat de la finestra des d'on mires els patos
-	// Ajusta aquest offset segons el teu model (cap a dins del vaixell)
-	g_MatapatosWindowCentre = g_MataParetCentre + glm::vec3(0.0f, 0.0f, 1.0f);
-
 
 	const int numFiles = 2;
 	const int numCols = 3;
@@ -1444,7 +1139,7 @@ void IniciaMatapatos()
 {
 	g_TempsMatapatos = 0.0f;
 	g_PuntsMatapatos = 0;
-	// NO toquem g_MatapatosSuperat aquí
+	g_MatapatosSuperat = false;
 
 	for (auto& o : g_ObjectiusMatapatos) {
 		o.viu = true;
@@ -1456,7 +1151,6 @@ void IniciaMatapatos()
 
 	fprintf(stderr, "[MATAPATOS] Nova partida: objectiu %d punts\n", g_PuntsObjectiuMatapatos);
 }
-
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1544,100 +1238,83 @@ void InitMatapatosGeometry()
 // ─────────────────────────────────────────────────────────────────────────────
 // Actualització del minijoc (temps + moviment de patos)
 // ─────────────────────────────────────────────────────────────────────────────
+
 void ActualitzaMatapatos(float dt)
 {
-	// Si ja hem guanyat definitivament, no cal fer res
-	if (g_MatapatosSuperat)
+	if (g_EstatMatapatos != EstatMatapatos::JUGANT)
 		return;
 
-	// ── 1) Mou sempre els patos (ambient), estigui o no el minijoc actiu ──
-	// Moviment 2D (X,Y) tipus Lissajous dins del panell
-	const float baseAmpX = g_MataAmplada * 0.35f;  // amplitud horitzontal base
-	const float baseAmpY = g_MataAlcada * 0.25f;   // amplitud vertical base
+	g_TempsMatapatos += dt;
 
-	// Comptem quants patos vius queden
-	int numVius = 0;
-	for (const auto& obj : g_ObjectiusMatapatos) {
-		if (obj.viu) ++numVius;
+	// 1) Comprovar si s'ha esgotat el temps
+	if (g_TempsMatapatos >= g_DuradaMatapatos) {
+		g_EstatMatapatos = EstatMatapatos::ACABAT;
+		
+		if (g_PuntsMatapatos >= g_PuntsObjectiuMatapatos) {
+			g_MatapatosSuperat = true;
+
+			// Recompensa d'inventari (només la primera vegada)
+			if (!g_MatapatosRewardDonat) {
+				AfegirItemInventari(
+					"clau_matapatos",
+					"Clau rovellada",
+					"Una clau rovellada que has guanyat al minijoc de matapatos."
+				);
+				g_MatapatosRewardDonat = true;
+			}
+
+			fprintf(stderr, "[MATAPATOS] Temps esgotat: VICTÒRIA (%d punts)\n", g_PuntsMatapatos);
+		}
+		else {
+			g_MatapatosSuperat = false;
+			fprintf(stderr, "[MATAPATOS] Temps esgotat: DERROTA (%d/%d punts)\n",
+				g_PuntsMatapatos, g_PuntsObjectiuMatapatos);
+		}
+		return;
 	}
 
-	bool algunViu = (numVius > 0);
+	// 2) Moviment dels patos
+	const float amplitud = g_MataAmplada * 0.35f;
+
+	bool algunViu = false;
 
 	for (auto& obj : g_ObjectiusMatapatos) {
 		if (!obj.viu) continue;
 
-		// Paràmetres base per a aquest pato
-		float ampX = baseAmpX;
-		float ampY = baseAmpY;
-		float speed = obj.velocitat;
+		algunViu = true;
 
-		// ─────────────────────────────────────────────
-		// FASE TENSIÓ: si només queda 1 pato viu
-		//   → es mou més ràpid i recorre més espai
-		// ─────────────────────────────────────────────
-		if (numVius == 1) {
-			speed *= 2.0f;   // més ràpid
-			ampX *= 1.2f;   // més recorregut horitzontal
-			ampY *= 1.1f;   // una mica més de moviment vertical
-		}
+		obj.fase += obj.velocitat * dt;
+		float offset = sinf(obj.fase) * amplitud;
 
-		// Fase temporal
-		obj.fase += speed * dt;
-
-		// Moviment més ric: X i Y amb freqüències diferents
-		float offsetX = sinf(obj.fase) * ampX;           // oscil·lació principal horitzontal
-		float offsetY = sinf(obj.fase * 1.7f) * ampY;    // oscil·lació vertical desfasada
-
-		// Ens mantenim al pla de la paret (Z constant)
-		obj.posicioActual = obj.posicioBase + glm::vec3(offsetX, offsetY, 0.0f);
+		obj.posicioActual = obj.posicioBase + glm::vec3(offset, 0.0f, 0.0f);
 	}
 
-	// Si el minijoc NO està en marxa, només volem l'animació ambient
-	if (g_EstatMatapatos != EstatMatapatos::JUGANT)
-		return;
-
-	// ── 2) Lògica de partida (només quan estem jugant) ─────────────────────
-	g_TempsMatapatos += dt;
-
-	// 2.1) Temps esgotat -> partida fallida (cap recompensa)
-	if (g_TempsMatapatos >= g_DuradaMatapatos) {
-		fprintf(stderr,
-			"[MATAPATOS] Temps esgotat: DERROTA (%d/%d punts)\n",
-			g_PuntsMatapatos, g_PuntsObjectiuMatapatos);
-
-		g_MatapatosSuperat = false;  // seguim sense haver-lo superat
-		AturaMatapatos();            // torna a OFF i reactiva WASD
-		return;
-	}
-
-	// 2.2) Si ja no queda cap pato viu -> VICTÒRIA
+	// 3) Si ja no queda cap pato viu, acabem la partida abans de temps
 	if (!algunViu) {
-		g_MatapatosSuperat = true;
+		g_EstatMatapatos = EstatMatapatos::ACABAT;
 
-		// Recompensa d'inventari (només la primera vegada)
-		if (!g_MatapatosRewardDonat) {
-			AfegirItemInventari(
-				"hacha",
-				"Destral vella",
-				"Una destral rovellada que has aconseguit abatin tots els patos."
-			);
-			g_MatapatosRewardDonat = true;
+		if (g_PuntsMatapatos >= g_PuntsObjectiuMatapatos) {
+			g_MatapatosSuperat = true;
+
+			// Recompensa d'inventari (només la primera vegada)
+			if (!g_MatapatosRewardDonat) {
+				AfegirItemInventari(
+					"clau_matapatos",
+					"Clau rovellada",
+					"Una clau rovellada que has guanyat al minijoc de matapatos."
+				);
+				g_MatapatosRewardDonat = true;
+			}
+
+			fprintf(stderr, "[MATAPATOS] Tots els patos abatuts: VICTÒRIA (%d punts)\n", g_PuntsMatapatos);
 		}
-
-		// Mostrem missatge de recompensa uns segons
-		g_MatapatosShowRewardMsg = true;
-		g_MatapatosRewardMsgStart = glfwGetTime();
-
-		fprintf(stderr,
-			"[MATAPATOS] Tots els patos abatuts: VICTÒRIA (%d punts)\n",
-			g_PuntsMatapatos);
-
-		// passa a OFF però com g_MatapatosSuperat = true no es reseteja res
-		AturaMatapatos();
+		else {
+			g_MatapatosSuperat = false;
+			fprintf(stderr, "[MATAPATOS] Tots els patos abatuts però sense prou punts (%d/%d)\n",
+				g_PuntsMatapatos, g_PuntsObjectiuMatapatos);
+		}
 	}
 }
-
-
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1711,7 +1388,7 @@ void ProcessaDisparMatapatos(GLFWwindow* window)
 // ─────────────────────────────────────────────────────────────────────────────
 void DibuixaMatapatos(GLuint programID)
 {
-	if (g_MatapatosSuperat)
+	if (g_EstatMatapatos == EstatMatapatos::OFF)
 		return;
 
 	if (!g_MatapatosGavina)
@@ -1787,22 +1464,10 @@ void AturaMatapatos()
 	g_EstatMatapatos = EstatMatapatos::OFF;
 	g_TempsMatapatos = 0.0f;
 	g_PuntsMatapatos = 0;
-
-	// Si encara NO s'ha superat, resetegem els patos per a la propera partida
-	if (!g_MatapatosSuperat) {
-		for (auto& o : g_ObjectiusMatapatos) {
-			o.viu = true;
-			o.fase = 0.0f;
-			o.posicioActual = o.posicioBase;
-		}
-	}
-
-	// Tornem a permetre moviment FPV
-	g_FVP_move = true;
+	g_MatapatosSuperat = false;
 
 	fprintf(stderr, "[MATAPATOS] Minijoc aturat.\n");
 }
-
 
 
 // Crea un cub amb pos(3) + normal(3) + uv(2) (VAO compartit pels props)
@@ -2193,12 +1858,12 @@ void InitGL()
 
 	if (!cubemapTexture) {
 		const std::vector<std::string> faces = {
-			".\\textures\\skybox\\frente.jpg",
-			".\\textures\\skybox\\atras.jpg",
-			".\\textures\\skybox\\derecha.jpg",
-			".\\textures\\skybox\\izquierda.jpg",
-			".\\textures\\skybox\\suelo.jpg",
-			".\\textures\\skybox\\cielo.jpg"
+			".\\textures\\skybox\\right.jpg",
+			".\\textures\\skybox\\left.jpg",
+			".\\textures\\skybox\\top.jpg",
+			".\\textures\\skybox\\bottom.jpg",
+			".\\textures\\skybox\\front.jpg",
+			".\\textures\\skybox\\back.jpg"
 		};
 		cubemapTexture = loadCubemap(faces);
 	}
@@ -2336,9 +2001,6 @@ void InitGL()
 	// Minijoc Matapatos
 	InitMatapatos();
 	InitMatapatosGeometry();
-
-	// Minijoc Palanques
-	InitPalancas();
 
 	g_TimePrev = glfwGetTime();
 }
@@ -2503,8 +2165,8 @@ void FPV_ApplyView()
 
 	if (g_BackflipActive) {
 		float p = glm::clamp(g_BackflipTime / g_BackflipDur, 0.0f, 1.0f);
-		float e = p * p * (3.0f - 2.0f * p);
-		float ang = e * glm::two_pi<float>();
+		float e = p * p * (3.0f - 2.0f * p);              
+		float ang = e * glm::two_pi<float>();           
 		float c = cosf(ang), s = sinf(ang);
 
 		glm::vec3 frontR = front * c + up * s;
@@ -2516,14 +2178,7 @@ void FPV_ApplyView()
 		eye += up * lift;
 	}
 
-	// ── Zoom / "lean" immersiu cap endavant durant el minijoc ──
-	if (g_MatapatosZoomFactor > 1e-3f && g_EstatMatapatos == EstatMatapatos::JUGANT) {
-		float dist = g_MatapatosZoomDist * g_MatapatosZoomFactor;
-		eye += front * dist;
-	}
-
 	ViewMatrix = glm::lookAt(eye, eye + front, up);
-
 }
 
 
@@ -2549,6 +2204,7 @@ static float clampf(float x, float a, float b) { return x < a ? a : (x > b ? b :
 // FPV_Update: entrada d’usuari, moviment, head-bobbing i física vertical
 // ─────────────────────────────────────────────────────────────────────────────
 
+bool g_FVP_move = true;
 
 void FPV_Update(GLFWwindow* window, float dt)
 {
@@ -2625,27 +2281,24 @@ void FPV_Update(GLFWwindow* window, float dt)
 
 	// ── Desplaçament en XZ ─────────────────────────────────────────────────
 
-
 	glm::vec3 moveDir(0.0f);
-
-	// No permetre moviment amb WASD mentre el minijoc Matapatos està en marxa
-	const bool bloquejaMovimentMatapatos =
-		(g_EstatMatapatos == EstatMatapatos::JUGANT);
-
-	if (g_FVP_move && !bloquejaMovimentMatapatos)
+	if(g_FVP_move)
 	{
 		if (w) moveDir += forwardXZ;
 		if (s) moveDir -= forwardXZ;
 		if (a) moveDir -= rightXZ;
 		if (d) moveDir += rightXZ;
 	}
-
+	
 	if (glm::dot(moveDir, moveDir) > 0.0f) {
 		moveDir = glm::normalize(moveDir);
-		glm::vec3 nextPos = g_FPVPos + moveDir * currentSpeed * dt;
-		CheckPlayerSlidingCollisionNew(nextPos, FPV_RADIUS, g_FPVPos, g_playerHeight);
+		//g_FPVPos += moveDir * currentSpeed * dt;  
+		{
+			glm::vec3 nextPos = g_FPVPos + moveDir * currentSpeed * dt;
+			CheckPlayerSlidingCollisionNew(nextPos, FPV_RADIUS, g_FPVPos, g_playerHeight, vHitboxOBJ);
+		}
+			
 	}
-
 
 	// ── Head-Bobbing (vertical, lligat a distància) ────────────────────────
 	{
@@ -2690,18 +2343,7 @@ void FPV_Update(GLFWwindow* window, float dt)
 		g_BobOffY += (targetY - g_BobOffY) * alpha;
 
 		if (!g_BobEnabled) g_BobOffY = 0.0f;
-
-
 	}
-
-	// ── Zoom immersiu per al minijoc Matapatos ─────────────────────────────
-	{
-		float targetZoom = (g_EstatMatapatos == EstatMatapatos::JUGANT) ? 1.0f : 0.0f;
-		float speed = g_MatapatosZoomSpeed;
-		float k = glm::clamp(speed * dt, 0.0f, 1.0f);
-		g_MatapatosZoomFactor += (targetZoom - g_MatapatosZoomFactor) * k;
-	}
-
 
 	// ── Col·lisions amb objectes
 
@@ -2740,138 +2382,27 @@ void FPV_Update(GLFWwindow* window, float dt)
 		if (g_VelY > 0.0f) g_VelY = 0.0f;
 	}
 
-	// ─────────────────────────────────────────────────────────
-// Detectar si estem mirant la finestra del Matapatos
-// ─────────────────────────────────────────────────────────
-	if (g_EstatMatapatos == EstatMatapatos::OFF &&
-		!g_MatapatosSuperat &&
-		g_FPV &&
-		!g_InventariObert)
 	{
-		glm::vec3 toWin = g_MatapatosWindowCentre - g_FPVPos;
-		float dist = glm::length(toWin);
-		const float maxDistJugador = 2.0f;   // ajusta al gust
+		const bool teclaM = (glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS);
+		static bool teclaMPrev = false;
 
-		if (dist < maxDistJugador) {
-			glm::vec3 toWinNorm = glm::normalize(toWin);
-			// front ja està calculat uns paràgrafs més amunt
-			float alineacio = glm::dot(toWinNorm, front);
-			const float minDot = 0.85f;       // quant has de mirar "de cara"
-
-			g_MatapatosInteractuable = (alineacio > minDot);
-		}
-		else {
-			g_MatapatosInteractuable = false;
-		}
-	}
-	else {
-		g_MatapatosInteractuable = false;
-	}
-
-	// ─────────────────────────────────────────────────────────
-	// Detectar si estem mirant el panell de Palanques
-	// ─────────────────────────────────────────────────────────
-	if (g_EstatPalancas == EstatPalanques::OFF &&
-		!InventariTeItem("clau_palanques") &&   // opcional
-		g_FPV &&
-		!g_InventariObert)
-	{
-		glm::vec3 toPanel = g_PalanquesParetCentre - g_FPVPos;
-		float dist = glm::length(toPanel);
-		if (dist < g_PalanquesRadiInteract) {
-			glm::vec3 toPanelNorm = glm::normalize(toPanel);
-			float alineacio = glm::dot(toPanelNorm, front);
-			const float minDot = 0.85f;
-			g_PalanquesInteractuable = (alineacio > minDot);
-		}
-		else {
-			g_PalanquesInteractuable = false;
-		}
-	}
-	else {
-		g_PalanquesInteractuable = false;
-	}
-
-	// ─────────────────────────────────────────────────────────
-	// Interaccions contextuals (escales entre plantes / timó)
-	// ─────────────────────────────────────────────────────────
-	g_InteraccioDisponible = false;
-	g_InteraccioContext = TipusInteraccioContext::NONE;
-
-	if (act_state == GameState::GAME &&
-		g_FPV &&
-		!g_InventariObert &&
-		g_EstatMatapatos != EstatMatapatos::JUGANT)
-	{
-		// Si la finestra del Matapatos ja mostra el seu HUD, no solapem
-		if (!g_MatapatosInteractuable)
-		{
-			auto dinsRadiXZ = [](const glm::vec3& pos,
-				const glm::vec3& centre,
-				float radi) -> bool
-				{
-					glm::vec2 d(pos.x - centre.x, pos.z - centre.z);
-					float dist = glm::length(d);
-					return dist <= radi;
-				};
-
-			// IMPORTANT:
-			// Si encara no vols bloquejar per inventari, comenta els InventariTeItem(...)
-			// i deixa només els dinsRadiXZ(...).
-
-			// 1) Planta baixa -> planta mitja
-			if (dinsRadiXZ(g_FPVPos, g_PosZonaBaixaAMitja, g_RadiZonaBaixaAMitja)
-				/* && InventariTeItem("clau_planta_inferior") */)
-			{
-				g_InteraccioDisponible = true;
-				g_InteraccioContext = TipusInteraccioContext::BAIXA_A_MITJA;
-			}
-			// 2) Planta mitja -> planta baixa
-			else if (dinsRadiXZ(g_FPVPos, g_PosZonaMitjaABaixa, g_RadiZonaMitjaABaixa)
-				/* && InventariTeItem("clau_planta_inferior") */)
-			{
-				g_InteraccioDisponible = true;
-				g_InteraccioContext = TipusInteraccioContext::MITJA_A_BAIXA;
-			}
-			// 3) Planta mitja -> coberta
-			else if (dinsRadiXZ(g_FPVPos, g_PosZonaMitjaASuperior, g_RadiZonaMitjaASuperior)
-				/* && InventariTeItem("clau_planta_superior") */)
-			{
-				g_InteraccioDisponible = true;
-				g_InteraccioContext = TipusInteraccioContext::MITJA_A_SUPERIOR;
-			}
-			// 4) Coberta -> planta mitja
-			else if (dinsRadiXZ(g_FPVPos, g_PosZonaSuperiorAMitja, g_RadiZonaSuperiorAMitja)
-				/* && InventariTeItem("clau_planta_superior") */)
-			{
-				g_InteraccioDisponible = true;
-				g_InteraccioContext = TipusInteraccioContext::SUPERIOR_A_MITJA;
-			}
-			// 5) Coberta -> pis del timó (requereix destral, per exemple)
-			else if (dinsRadiXZ(g_FPVPos, g_PosZonaSuperiorATimo, g_RadiZonaSuperiorATimo)
-				/* && InventariTeItem("hacha") */)
-			{
-				g_InteraccioDisponible = true;
-				g_InteraccioContext = TipusInteraccioContext::SUPERIOR_A_TIMO;
-			}
-			// 6) Pis del timó -> coberta
-			else if (dinsRadiXZ(g_FPVPos, g_PosZonaTimoASuperior, g_RadiZonaTimoASuperior)
-				/* && InventariTeItem("hacha") */)
-			{
-				g_InteraccioDisponible = true;
-				g_InteraccioContext = TipusInteraccioContext::TIMO_A_SUPERIOR;
+		if (teclaM && !teclaMPrev) {
+			if (g_EstatMatapatos == EstatMatapatos::OFF ||
+				g_EstatMatapatos == EstatMatapatos::ACABAT) {
+				IniciaMatapatos();
 			}
 		}
-	}
 
+		teclaMPrev = teclaM;
+	}
 
 	// Processar els dispars del minijoc (clic esquerre)
 	ProcessaDisparMatapatos(window);
+
+
+
 	RaycastFPV(g_FPVYaw, g_FPVPitch, g_FPVPos);
 }
-
-
-
 
 //--------------------------------//
 //----- Cofre amb codi-----------//
@@ -3250,6 +2781,60 @@ void configura_Escena()
 	GTMatrix = instancia(transf, TG, TGF);
 }
 
+void DrawOBBs(GLuint shader_programID, std::vector<COBJModel*> vHitboxOBJ,
+	const glm::mat4& ViewMatrix, const glm::mat4& ModelMatrix)
+{
+	if (vHitboxOBJ.empty()) return;
+
+	// Save current polygon mode
+	GLint polygonMode[2];
+	glGetIntegerv(GL_POLYGON_MODE, polygonMode);
+
+	// Set to wireframe for OBBs
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+	// Disable depth test for OBBs to make them always visible
+	bool depthTestEnabled = glIsEnabled(GL_DEPTH_TEST);
+	glDisable(GL_DEPTH_TEST);
+
+	// Disable texturing for OBBs
+	glUniform1i(glGetUniformLocation(shader_programID, "textur"), GL_FALSE);
+
+	// Set a simple material for OBB wireframe (red color)
+	bool sw_mat_obb[5] = { true, true, false, false, false };
+	CColor col_obb = { 1.0f, 0.0f, 0.0f, 1.0f }; // Red color
+
+	// Set material properties for OBB
+	glUniform4f(glGetUniformLocation(shader_programID, "material.ambient"),
+		col_obb.r, col_obb.g, col_obb.b, col_obb.a);
+	glUniform4f(glGetUniformLocation(shader_programID, "material.diffuse"),
+		col_obb.r, col_obb.g, col_obb.b, col_obb.a);
+	glUniform4f(glGetUniformLocation(shader_programID, "material.specular"),
+		0.0f, 0.0f, 0.0f, 1.0f); // No specular
+	glUniform4f(glGetUniformLocation(shader_programID, "material.emission"),
+		0.0f, 0.0f, 0.0f, 1.0f); // No emission
+
+	// Draw OBB for each hitbox object
+	for (COBJModel* hitboxObj : vHitboxOBJ)
+	{
+		//hitboxObj->updateOBBWorld();
+		if (!hitboxObj || !hitboxObj->isHitbox()) continue;
+
+		// Apply the same transformation as the object
+		glm::mat4 ModelMatrixOBJ = ModelMatrix; // You might need per-object transformations
+
+		hitboxObj->drawOBB(shader_programID, ModelMatrixOBJ);
+	}
+
+	// Restore depth test state
+	if (depthTestEnabled) {
+		glEnable(GL_DEPTH_TEST);
+	}
+
+	// Restore polygon mode
+	glPolygonMode(GL_FRONT_AND_BACK, polygonMode[0]);
+}
+
 // dibuixa_Escena: Funció que crida al dibuix dels diferents elements de l'escena
 void dibuixa_Escena()
 {
@@ -3258,25 +2843,7 @@ void dibuixa_Escena()
 	{
 		// 1) Skybox (opcional)
 		if (SkyBoxCube)
-		{
-			glUseProgram(skC_programID);
-
-			auto locSk = [&](const char* n) { return glGetUniformLocation(skC_programID, n); };
-
-			glUniform1i(locSk("uObraDinnOn"), g_ObraDinnOn ? GL_TRUE : GL_FALSE);
-
-			// Aquí usamos el umbral específico del cielo:
-			glUniform1f(locSk("uThreshold"), g_UmbralObraDinnSky);
-
-			glUniform1f(locSk("uDitherAmp"), g_DitherAmp);
-			glUniform1i(locSk("uGammaMap"), g_GammaMap ? GL_TRUE : GL_FALSE);
-
 			dibuixa_Skybox(skC_programID, cubemapTexture, Vis_Polar, ProjectionMatrix, ViewMatrix);
-
-			glUseProgram(0);
-		}
-
-
 
 		// 2) Eixos/Grid
 		//dibuixa_Eixos(eixos_programID, eixos, eixos_Id, grid, hgrid, ProjectionMatrix, ViewMatrix);
@@ -3360,6 +2927,8 @@ void dibuixa_Escena()
 		vObOBJ,
 		ViewMatrix, GTMatrix
 	);
+
+	//DrawOBBs(shader_programID, vHitboxOBJ, ViewMatrix, GTMatrix);
 }
 
 // Barra_Estat: Actualitza la barra d'estat (Status Bar) de l'aplicació en la consola amb els
@@ -3592,7 +3161,6 @@ void draw_scene()
 	DibuixaCrosshair();
 	DibuixaHUDMatapatos();
 	DibuixaInventari();
-	DibuixaHUDInteraccioContextual();
 
 	
 
@@ -5192,25 +4760,19 @@ void OnVistaSkyBox()
 
 // Càrrega VAO Skybox Cube
 	if (skC_VAOID.vaoId == 0) skC_VAOID = loadCubeSkybox_VAO();
+			".\\textures\\skybox\\top.jpg",
 	Set_VAOList(CUBE_SKYBOX, skC_VAOID);
 
 	if (!cubemapTexture)
 	{	// load Skybox textures
 		// -------------
 		std::vector<std::string> faces =
-		{
-			".\\textures\\skybox\\front.jpg",  // 1
-			".\\textures\\skybox\\back.jpg",  // 1
-			".\\textures\\skybox\\right.jpg",  // 2
-			".\\textures\\skybox\\left.jpg",  // 3
-			".\\textures\\skybox\\suelo.jpg",  // 0
-			".\\textures\\skybox\\cielo.jpg"   // 5
+		{ ".\\textures\\skybox\\right.jpg",
+			".\\textures\\skybox\\left.jpg",
+			".\\textures\\skybox\\bottom.jpg",
+			".\\textures\\skybox\\front.jpg",
+			".\\textures\\skybox\\back.jpg"
 		};
-
-
-
-
-
 		cubemapTexture = loadCubemap(faces);
 	}
 }
@@ -6542,134 +6104,23 @@ void OnKeyDown(GLFWwindow* window, int key, int scancode, int action, int mods)
 			}
 		}
 
-		// Tecla K: imprimir coordenades actuals del jugador (debug TP)
-		if (g_FPV && action == GLFW_PRESS && mods == 0 && key == GLFW_KEY_K)
+		// ─────────────────────────────────────────────────────────────
+		// Tecla M: iniciar minijoc Matapatos
+		// ─────────────────────────────────────────────────────────────
+		if (action == GLFW_PRESS && g_FPV && mods == 0 && key == GLFW_KEY_M)
 		{
-			fprintf(stderr,
-				"[DEBUG] FPV pos=(%.2f, %.2f, %.2f)  yaw=%.2f  pitch=%.2f\n",
-				g_FPVPos.x, g_FPVPos.y, g_FPVPos.z,
-				g_FPVYaw, g_FPVPitch);
-
-			return; // no cal propagar la K a la resta
-		}
-
-
-		// Tecla E: iniciar minijoc Matapatos quan mires la finestra
-		if (action == GLFW_PRESS && g_FPV && mods == 0 && key == GLFW_KEY_E)
-		{
-			if (g_PalanquesInteractuable &&
-				g_EstatPalancas == EstatPalanques::OFF &&
-				!InventariTeItem("clau_palanques"))
-			{
-				g_EstatPalancas = EstatPalanques::JUGANT;
-
-				// Blocar moviment tipus Matapatos
-				g_FVP_move = false;
-				FPV_SetMouseCapture(true);
-
-				fprintf(stderr, "[PALANQUES] Iniciant minijoc (E)\n");
-				return; // no propagar la E a altres sistemes
-			}
-
-			if (g_MatapatosInteractuable &&
-				!g_MatapatosSuperat &&
-				g_EstatMatapatos == EstatMatapatos::OFF)
+			if (g_EstatMatapatos == EstatMatapatos::OFF ||
+				g_EstatMatapatos == EstatMatapatos::ACABAT)
 			{
 				IniciaMatapatos();
-
-				// Bloquegem el moviment WASD però mantenim el mouse look
-				g_FVP_move = false;
-				FPV_SetMouseCapture(true);
-
-				fprintf(stderr, "[MATAPATOS] Iniciant partida (E)\n");
-				return; // no propagar la E a la resta (cofre, etc.) en aquest cas
+				fprintf(stderr, "[MATAPATOS] Iniciant partida (M)\n");
 			}
-			// Si no és interactuable, deixem que altres sistemes (cofre, etc.)
-			// gestionin la tecla E
-		}
-
-		// Tecla E: interaccions contextuals (escales / timó / barca)
-		if (action == GLFW_PRESS && g_FPV && mods == 0 && key == GLFW_KEY_E)
-		{
-			if (g_InteraccioDisponible)
+			else
 			{
-				switch (g_InteraccioContext)
-				{
-				case TipusInteraccioContext::BAIXA_A_MITJA:
-					g_FPVPos = g_DestZonaBaixaAMitja;
-					g_RoomYMin = g_DestZonaBaixaAMitja.y - g_PlayerEye;
-					g_RoomYMax = g_RoomYMin + g_RoomHeight;
-					g_VelY = 0.0f;
-					g_Grounded = true;
-					fprintf(stderr, "[TP] Baixa -> Mitja  pos=(%.2f, %.2f, %.2f)  Ymin=%.2f\n",
-						g_FPVPos.x, g_FPVPos.y, g_FPVPos.z, g_RoomYMin);
-					break;
-
-				case TipusInteraccioContext::MITJA_A_BAIXA:
-					g_FPVPos = g_DestZonaMitjaABaixa;
-					g_RoomYMin = g_DestZonaMitjaABaixa.y - g_PlayerEye;
-					g_RoomYMax = g_RoomYMin + g_RoomHeight;
-					g_VelY = 0.0f;
-					g_Grounded = true;
-					fprintf(stderr, "[TP] Mitja -> Baixa  pos=(%.2f, %.2f, %.2f)  Ymin=%.2f\n",
-						g_FPVPos.x, g_FPVPos.y, g_FPVPos.z, g_RoomYMin);
-					break;
-
-				case TipusInteraccioContext::MITJA_A_SUPERIOR:
-					g_FPVPos = g_DestZonaMitjaASuperior;
-					g_RoomYMin = g_DestZonaMitjaASuperior.y - g_PlayerEye;
-					g_RoomYMax = g_RoomYMin + g_RoomHeight;
-					g_VelY = 0.0f;
-					g_Grounded = true;
-					fprintf(stderr, "[TP] Mitja -> Superior  pos=(%.2f, %.2f, %.2f)  Ymin=%.2f\n",
-						g_FPVPos.x, g_FPVPos.y, g_FPVPos.z, g_RoomYMin);
-					break;
-
-				case TipusInteraccioContext::SUPERIOR_A_MITJA:
-					g_FPVPos = g_DestZonaSuperiorAMitja;
-					g_RoomYMin = g_DestZonaSuperiorAMitja.y - g_PlayerEye;
-					g_RoomYMax = g_RoomYMin + g_RoomHeight;
-					g_VelY = 0.0f;
-					g_Grounded = true;
-					fprintf(stderr, "[TP] Superior -> Mitja  pos=(%.2f, %.2f, %.2f)  Ymin=%.2f\n",
-						g_FPVPos.x, g_FPVPos.y, g_FPVPos.z, g_RoomYMin);
-					break;
-
-				case TipusInteraccioContext::SUPERIOR_A_TIMO:
-					g_FPVPos = g_DestZonaSuperiorATimo;
-					g_RoomYMin = g_DestZonaSuperiorATimo.y - g_PlayerEye;
-					g_RoomYMax = g_RoomYMin + g_RoomHeight;
-					g_VelY = 0.0f;
-					g_Grounded = true;
-					fprintf(stderr, "[TP] Superior -> Timó  pos=(%.2f, %.2f, %.2f)  Ymin=%.2f\n",
-						g_FPVPos.x, g_FPVPos.y, g_FPVPos.z, g_RoomYMin);
-					break;
-
-				case TipusInteraccioContext::TIMO_A_SUPERIOR:
-					g_FPVPos = g_DestZonaTimoASuperior;
-					g_RoomYMin = g_DestZonaTimoASuperior.y - g_PlayerEye;
-					g_RoomYMax = g_RoomYMin + g_RoomHeight;
-					g_VelY = 0.0f;
-					g_Grounded = true;
-					fprintf(stderr, "[TP] Timó -> Superior  pos=(%.2f, %.2f, %.2f)  Ymin=%.2f\n",
-						g_FPVPos.x, g_FPVPos.y, g_FPVPos.z, g_RoomYMin);
-					break;
-
-				case TipusInteraccioContext::ESCAPAR_BARCA:
-					// Aquí, quan tinguem la barca final, marcarem fi de joc
-					fprintf(stderr, "[ESCAPE] Has pujat a la barca i has escapat del vaixell!\n");
-					break;
-
-				default:
-					break;
-				}
-
-				return; // ja hem consumit la E
+				fprintf(stderr, "[MATAPATOS] Ja hi ha una partida en curs.\n");
 			}
+			return; 
 		}
-
-
-
 
 		// Tecla Q: sortir del minijoc Matapatos
 		if (action == GLFW_PRESS && g_FPV && mods == 0 && key == GLFW_KEY_Q)
@@ -6679,18 +6130,6 @@ void OnKeyDown(GLFWwindow* window, int key, int scancode, int action, int mods)
 				AturaMatapatos();
 			}
 			return; 
-		}
-
-		// Tecla Q: sortir del minijoc Palanques
-		if (action == GLFW_PRESS && g_FPV && mods == 0 && key == GLFW_KEY_Q)
-		{
-			if (g_EstatPalancas == EstatPalanques::JUGANT)
-			{
-				g_EstatPalancas = EstatPalanques::OFF;
-				g_FVP_move = true;
-				fprintf(stderr, "[PALANQUES] Minijoc aturat.\n");
-				return;
-			}
 		}
 
 		// Tecla G: mode inspecció de l'objecte principal
@@ -8657,39 +8096,6 @@ void OnMouseButton(GLFWwindow* window, int button, int action, int mods)
 
 	// 3) A partir d'aquí: el teu codi original d'EntornVGI
 
-	// ─────────────────────────────────────────────
-	// PALANCAS: click esquerre sobre una palanca
-	// ─────────────────────────────────────────────
-	if (button == GLFW_MOUSE_BUTTON_LEFT &&
-		action == GLFW_PRESS &&
-		act_state == GameState::GAME &&
-		g_FPV &&
-		!g_InventariObert)
-		fprintf(stderr, "[PALANCAS] Click esquerre, provant hit\n");
-	{
-		// Raig des de la càmera FPV (igual que Matapatos) 
-		const float cy = cosf(glm::radians(g_FPVYaw));
-		const float sy = sinf(glm::radians(g_FPVYaw));
-		const float cp = cosf(glm::radians(g_FPVPitch));
-		const float sp = sinf(glm::radians(g_FPVPitch));
-
-		glm::vec3 front = glm::normalize(glm::vec3(cy * cp, sp, sy * cp));
-		glm::vec3 orig = g_FPVPos;
-		glm::vec3 dir = glm::normalize(front);
-
-		for (int i = 0; i < NUM_PALANQUES; ++i) {
-			// AABB al voltant de la posicio de la palanca
-			glm::vec3 half(0.4f, 0.60f, 0.4f);   // ajusta segons mida real
-			glm::vec3 bmin = g_Palanques[i].posicio - half;
-			glm::vec3 bmax = g_Palanques[i].posicio + half;
-
-			if (RayIntersectsAABB(orig, dir, bmin, bmax)) {
-				TogglePalanca(i);
-				return; // no seguir amb la resta de lògica de ratolí
-			}
-		}
-	}
-
 	// OnLButtonDown
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
 	{
@@ -9865,14 +9271,14 @@ int main(void)
 
 			frame++;
 			if (frame % 300 == 0) { // cada ~5s si vas a 60fps
-				//fprintf(stderr,
-				//	"[DEBUG] frame=%llu  rays=%zu  trail=%zu  props=%zu  objMatapatos=%zu\n",
-					//frame,
-					//g_PersistentRays.size(),
-					//ray_trail.size(),
-					//g_Props.size(),
-					//g_ObjectiusMatapatos.size()
-				//); 
+				fprintf(stderr,
+					"[DEBUG] frame=%llu  rays=%zu  trail=%zu  props=%zu  objMatapatos=%zu\n",
+					frame,
+					g_PersistentRays.size(),
+					ray_trail.size(),
+					g_Props.size(),
+					g_ObjectiusMatapatos.size()
+				);
 			}
 			g_FVP_move = true; //ya es pot moure
 		}
