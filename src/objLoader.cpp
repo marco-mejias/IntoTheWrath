@@ -1845,7 +1845,7 @@ void _stdcall COBJModel::netejaTextures_OBJ()
 	int i;
 	GLboolean err;
 
-	for (i = 0; i <= numMaterials; i++)
+	for (i = 0; i < numMaterials; i++)
 	{	if (vMaterials[i].iTextureID)
 		{	err = glIsTexture(vMaterials[i].iTextureID);
 			glDeleteTextures(1, &vMaterials[i].iTextureID);
@@ -1910,7 +1910,7 @@ void _stdcall COBJModel::draw_TriVAO_OBJ(GLuint sh_programID)
 {
 	int i;
 
-	for (i = 0; i <= numMaterials; i++)
+	for (i = 0; i < numMaterials; i++)
 	{	UseMaterial_ShaderID(sh_programID, vMaterials[i]);	// Activació Material i-èssim
 		
 		draw_TriVAO_Object_OBJ(i);							// Dibuix objecte i-èssim
