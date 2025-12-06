@@ -42,17 +42,15 @@ const short unsigned int x = 0;
 const short unsigned int y = 1;
 const short unsigned int z = 2;
 
-int g_ObjetoInspeccionado = -1;
-
 //////////////////////////////////////////////////////////////////////
 // Construcktion / Destrucktion
 //////////////////////////////////////////////////////////////////////
 
 _stdcall COBJModel::COBJModel()
 {
+	AABBhitbox = nullptr;
 	hitbox = false;
 	render = true;
-	AABBhitbox = nullptr;
 	// Inicialitzar la llista de VAO's.
 	initVAOList_OBJ();
 }
@@ -185,7 +183,7 @@ int _stdcall COBJModel::LoadModel(char* szFileName)
 
 	////////////////////////////////////////////////////////////////////////
 	// Allocate space for structures that hold the model data
-	////////////////////////////////////////////////////////////////////////	
+	////////////////////////////////////////////////////////////////////////
 
 	// Which data types are stored in the file ? How many of each type ?
 	GetFileInfo(hFile, &OBJInfo, szBasePath);
@@ -1429,21 +1427,23 @@ void _stdcall COBJModel::MakePath(char szFileAndPath[])
 }
 
 void _stdcall COBJModel::GetTokenParameter(char szString[],
-	const unsigned int iStrSize, FILE* hFile)
+	const unsigned int iStrSize,
+	FILE* hFile)
 {
-	////////////////////////////////////////////////////////////////////////
-	// Read the parameter of a token, remove space and newline character
-	////////////////////////////////////////////////////////////////////////
+	if (!fgets(szString, iStrSize, hFile))
+		return;
 
-	// Read the parameter after the token
-	fgets(szString, iStrSize, hFile);
+	size_t len = strlen(szString);
+	if (len > 0 && szString[len - 1] == '\n') {
+		szString[len - 1] = '\0';
+		--len;
+	}
 
-	// Remove space before the token			
-	strcpy(szString, &szString[1]);
-
-	// Remove newline character after the token
-	szString[strlen(szString) - 1] = char('\0');
+	if (len > 0) {
+		memmove(szString, szString + 1, len);
+	}
 }
+
 
 static int CompareFaceByMaterial(const void* Arg1, const void* Arg2)
 {
@@ -1583,7 +1583,7 @@ void _stdcall COBJModel::netejaTextures_OBJ()
 	int i;
 	GLboolean err;
 
-	for (i = 0; i <= numMaterials; i++)
+	for (i = 0; i < numMaterials; i++)
 	{
 		if (vMaterials[i].iTextureID)
 		{
@@ -1651,7 +1651,7 @@ void _stdcall COBJModel::draw_TriVAO_OBJ(GLuint sh_programID)
 {
 	int i;
 
-	for (i = 0; i <= numMaterials; i++)
+	for (i = 0; i < numMaterials; i++)
 	{
 		UseMaterial_ShaderID(sh_programID, vMaterials[i]);	// Activació Material i-èssim
 

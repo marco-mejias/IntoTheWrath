@@ -66,7 +66,6 @@ struct Material
 class OBJLOADER_CLASS_DECL COBJModel
 {
 public:
-	AABB* AABBhitbox;
 	bool isHitbox() { return hitbox; };
 	void setAsHitbox() { hitbox = true; };
 	bool isRendering() { return render; };
@@ -110,8 +109,7 @@ private:
 	int vector_Materials[MAX_SIZE_VAOLIST];
 	CVAO VAOList_OBJ[MAX_SIZE_VAOLIST];
 	Material vMaterials[MAX_SIZE_VAOLIST];
-
-	//OBB* OBBhitbox;
+	AABB* AABBhitbox; // New line
 	bool hitbox;
 	bool render;
 	std::string name;
