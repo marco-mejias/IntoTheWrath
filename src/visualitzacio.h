@@ -1,6 +1,6 @@
-//******** PRACTICA VISUALITZACI” GR¿FICA INTERACTIVA (Escola Enginyeria - UAB
-//******** Entorn b‡sic VS2022 MONOFINESTRA amb OpenGL 4.6, interfÌcie GLFW 3.4, ImGui i llibreries GLM
-//******** Ferran Poveda, Marc Vivet, Carme Juli‡, DÈbora Gil, Enric MartÌ (Setembre 2025)
+//******** PRACTICA VISUALITZACI√ì GR√ÄFICA INTERACTIVA (Escola Enginyeria - UAB
+//******** Entorn b√†sic VS2022 MONOFINESTRA amb OpenGL 4.6, interf√≠cie GLFW 3.4, ImGui i llibreries GLM
+//******** Ferran Poveda, Marc Vivet, Carme Juli√†, D√©bora Gil, Enric Mart√≠ (Setembre 2025)
 // visualitzacio.h : Interface de visualitzacio.cpp
 //
 
@@ -11,40 +11,40 @@
 /*                                Funcions                                   */
 /* ------------------------------------------------------------------------- */
 
-// Entorn VGI: Il.luminaciÛ
+// Entorn VGI: Il.luminaci√≥
 void Iluminacio(char ilumin, bool ifix, bool ilu2sides, bool ll_amb, LLUM* lumin, char obj, bool frnt_fcs, bool bc_lin, int step);
 
 
 // ----------- Entorn VGI: PROJECCIONS
-// Entorn VGI: ProjecciÛ Ortografica
+// Entorn VGI: Projecci√≥ Ortografica
 glm::mat4 Projeccio_Orto();
-// Entorn VGI: ProjecciÛ Perspectiva
+// Entorn VGI: Projecci√≥ Perspectiva
 glm::mat4 Projeccio_Perspectiva(GLuint sh_programID, int minx, int miny, GLsizei w, GLsizei h, double zoom);
 
-// ----------- Entorn VGI: C¿MERES
-// Entorn VGI: C‡mera Ortogr‡fica
+// ----------- Entorn VGI: C√ÄMERES
+// Entorn VGI: C√†mera Ortogr√†fica
 glm::mat4 Vista_Ortografica(GLuint sh_programID, int prj, GLdouble Raux, CColor col_fons, CColor col_object, char objecte, GLdouble mida, int step,
 	bool frnt_fcs, bool oculta, bool testv, bool bck_ln, char iluminacio, bool llum_amb, LLUM* lumin,
 	bool ifix, bool il2sides, bool eix, CMask3D reixa, CPunt3D hreixa);
-// Entorn VGI: C‡mera EsfËrica
+// Entorn VGI: C√†mera Esf√®rica
 glm::mat4 Vista_Esferica(GLuint sh_programID, CEsfe3D opv,char VPol,bool pant,CPunt3D tr,CPunt3D trF,
 				 CColor col_fons,CColor col_object,char objecte,double mida,int step,
 				 bool frnt_fcs, bool oculta, bool testv, bool bck_ln, char iluminacio, bool llum_amb, LLUM* lumin, 
 				 bool ifix, bool il2sides, bool eix, CMask3D reixa, CPunt3D hreixa);
-// Entorn VGI: C‡mera Navega
+// Entorn VGI: C√†mera Navega
 glm::mat4 Vista_Navega(GLuint sh_programID,CPunt3D pv,//bool pvb,
 				  GLdouble n[3],GLdouble v[3], bool pant,CPunt3D tr,CPunt3D trF,
 				  CColor col_fons,CColor col_object,char objecte,bool color, int step, 
 				  bool frnt_fcs, bool oculta, bool testv,bool bck_ln, char iluminacio, bool llum_amb, LLUM* lumin, 
 				  bool ifix, bool il2sides,bool eix, CMask3D reixa, CPunt3D hreixa);
-// Entorn VGI: C‡mera Geode
+// Entorn VGI: C√†mera Geode
 glm::mat4 Vista_Geode(GLuint sh_programID, CEsfe3D opv, char VPol, bool pant, CPunt3D tr, CPunt3D trF,
 	CColor col_fons, CColor col_object, char objecte, double mida, int step,
 	bool frnt_fcs, bool oculta, bool testv, bool bck_ln,
 	char iluminacio, bool llum_amb, LLUM* lumi, bool ifix, bool il2sides,
 	bool eix, CMask3D reixa, CPunt3D hreixa);
 
-// Entorn VGI: C‡rrega TG
+// Entorn VGI: C√†rrega TG
 glm::mat4 instancia(bool TR, INSTANCIA tg, INSTANCIA tgF);
 
 // Entorn VGI: Dibuix dels eixos de coordenades

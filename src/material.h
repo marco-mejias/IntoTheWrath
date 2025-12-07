@@ -1,6 +1,6 @@
-//******** PRACTICA VISUALITZACI” GR¿FICA INTERACTIVA (Escola Enginyeria - UAB)
-//******** Entorn b‡sic VS2022 MONOFINESTRA amb OpenGL 4.6, interfÌcie GLFW 3.4, ImGui i llibreries GLM
-//******** Ferran Poveda, Marc Vivet, Carme Juli‡, DÈbora Gil, Enric MartÌ (Setembre 2025)
+//******** PRACTICA VISUALITZACI√ì GR≈îFICA INTERACTIVA (Escola Enginyeria - UAB)
+//******** Entorn b≈ïsic VS2022 MONOFINESTRA amb OpenGL 4.6, interf√≠cie GLFW 3.4, ImGui i llibreries GLM
+//******** Ferran Poveda, Marc Vivet, Carme Juli≈ï, D√©bora Gil, Enric Mart√≠ (Setembre 2025)
 // material.h : interface de material.cpp
 //
 
@@ -9,7 +9,7 @@
 
 #include "stdafx.h"
 
-//-------------- GC2: M‡xim nombre de Materials
+//-------------- GC2: M≈ïxim nombre de Materials
 #define MAX_MATERIALS  11
 
 //Tipus de materials

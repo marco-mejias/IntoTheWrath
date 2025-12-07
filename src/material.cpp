@@ -1,12 +1,12 @@
-//******** PRACTICA VISUALITZACIÓ GRÀFICA INTERACTIVA (Escola Enginyeria - UAB)
-//******** Entorn bàsic VS2022 MONOFINESTRA amb OpenGL 4.6, interfície GLFW, ImGui i llibreries GLM
-//******** Ferran Poveda, Marc Vivet, Carme Julià, Débora Gil, Enric Martí (Setembre 2025)
-// material.cpp : Funcions de definició de les propietats de reflectivitat dels objectes.
+//******** PRACTICA VISUALITZACIÃ“ GRÃ€FICA INTERACTIVA (Escola Enginyeria - UAB)
+//******** Entorn bÃ sic VS2022 MONOFINESTRA amb OpenGL 4.6, interfÃ­cie GLFW, ImGui i llibreries GLM
+//******** Ferran Poveda, Marc Vivet, Carme JuliÃ , DÃ©bora Gil, Enric MartÃ­ (Setembre 2025)
+// material.cpp : Funcions de definiciÃ³ de les propietats de reflectivitat dels objectes.
 
 #include "stdafx.h"
 #include "material.h"
 
-// Tipus de materials que es seleccionen a la funció SeleccionaMaterial
+// Tipus de materials que es seleccionen a la funciÃ³ SeleccionaMaterial
 MATERIAL  materials[MAX_MATERIALS] =
 {
 	{//Default
@@ -108,13 +108,13 @@ void SeleccionaMaterial(GLuint sh_programID, int quin,bool sw_mater[5])
 	//const float zeros[4]={0.0f,0.0f,0.0f,1.0f};
 	MATERIAL material;
 
-// Pas vector booleà sw_materials al Shader
+// Pas vector booleÃ  sw_materials al Shader
 	//glUniform4uiv(glGetUniformLocation(sh_programID, "sw_intensity"), 1, sw_mater);
 	glUniform4i(glGetUniformLocation(sh_programID, "sw_intensity"), sw_mater[0], sw_mater[1], sw_mater[2], sw_mater[3]);
 	glUniform1i(glGetUniformLocation(sh_programID, "sw_material"), sw_mater[4]);
 	
 	if ((quin >= 0) && (quin<MAX_MATERIALS))
-		{	// Component d'emissió de llum del material
+		{	// Component d'emissiÃ³ de llum del material
 			//glColorMaterial(GL_FRONT, GL_EMISSION);	// Codi OpenGL 1.1
 			if (sw_mater[0]) {	//glColor4fv(materials[quin].emission);
 								//glMaterialfv(GL_FRONT, GL_EMISSION, materials[quin].emission); // Codi OpenGL 1.1
@@ -157,7 +157,7 @@ void SeleccionaMaterial(GLuint sh_programID, int quin,bool sw_mater[5])
 			// Coeficient de reflectivitat difusa del material
 			//glColorMaterial(GL_FRONT, GL_DIFFUSE);
 			if (sw_mater[2]) {	//glColor4fv(materials[quin].diffuse);	// Codi OpenGL 1.1
-								//glMaterialfv(GL_FRONT, GL_DIFFUSE, materials[quin].diffuse);	// Coef. Reflexió Difusa	// Codi OpenGL 1.1
+								//glMaterialfv(GL_FRONT, GL_DIFFUSE, materials[quin].diffuse);	// Coef. ReflexiÃ³ Difusa	// Codi OpenGL 1.1
 								material.diffuse[0] = materials[quin].diffuse[0];
 								material.diffuse[1] = materials[quin].diffuse[1];
 								material.diffuse[2] = materials[quin].diffuse[2];
@@ -176,7 +176,7 @@ void SeleccionaMaterial(GLuint sh_programID, int quin,bool sw_mater[5])
 			// Coeficient de reflectivitat especular del material
 			//glColorMaterial(GL_FRONT, GL_SPECULAR);	// Codi OpenGL 1.1
 			if (sw_mater[3]){	//glColor4fv(materials[quin].specular);
-								//glMaterialfv(GL_FRONT, GL_SPECULAR, materials[quin].specular);	// Coef. Reflexió Especular	// Codi OpenGL 1.1
+								//glMaterialfv(GL_FRONT, GL_SPECULAR, materials[quin].specular);	// Coef. ReflexiÃ³ Especular	// Codi OpenGL 1.1
 								//glMaterialf(GL_FRONT, GL_SHININESS, materials[quin].shininess);	// Codi OpenGL 1.1
 								material.specular[0] = materials[quin].specular[0];
 								material.specular[1] = materials[quin].specular[1];
@@ -217,7 +217,7 @@ void SeleccionaColorMaterial(GLuint sh_programID, CColor c_obj, bool sw_mater[5]
 	glUniform4i(glGetUniformLocation(sh_programID, "sw_intensity"), sw_mater[0], sw_mater[1], sw_mater[2], sw_mater[3]);
 	glUniform1i(glGetUniformLocation(sh_programID, "sw_material"), sw_mater[4]);
 
-// Component de reflectivitat d'emissió de llum del material
+// Component de reflectivitat d'emissiÃ³ de llum del material
 //	glColorMaterial(GL_FRONT, GL_EMISSION);	// Codi OpenGL 1.1
 	if (sw_mater[0]) {	//glColor4fv(color);	// Codi OpenGL 1.1
 						//glMaterialfv(GL_FRONT, GL_EMISSION, color);	// Codi OpenGL 1.1
@@ -303,7 +303,7 @@ void SeleccionaColorMaterial(GLuint sh_programID, CColor c_obj, bool sw_mater[5]
 
 
 // llegir_Material: Llegir propietats de material de d'un fitxer segons l'estructura MATERIAL
-//			Retorna l'estructura MATERIAL llegida i un booleà si s'ha trobat el fitxer [TRUE] o no [FALSE].
+//			Retorna l'estructura MATERIAL llegida i un booleÃ  si s'ha trobat el fitxer [TRUE] o no [FALSE].
 bool llegir_Material(GLuint sh_programID, char* filename,int index)
 { 
 	FILE *fd;

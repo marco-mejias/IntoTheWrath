@@ -17,16 +17,16 @@
 #define ID_ITEM L"fx_item"
 
 
-// Gestión del sistema
+// GestiÃ³n del sistema
 void InitAudio();
 void ShutdownAudio();
 
 // Carga de audio
 bool LoadAudio(const std::wstring& path, const std::wstring& id);
 
-// --- REPRODUCCIÓN ---
+// --- REPRODUCCIÃ“N ---
 
-// Reproduce música en bucle (Chequeado manualmente)
+// Reproduce mÃºsica en bucle (Chequeado manualmente)
 void PlayMusicLoop(const std::wstring& id);
 
 // Reproduce UNA VEZ (Optimizado para pasos)

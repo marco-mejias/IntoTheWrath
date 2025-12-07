@@ -1,11 +1,11 @@
-//******** PRACTICA VISUALITZACI” GR¿FICA INTERACTIVA (Escola Enginyeria - UAB)
-//******** Entorn b‡sic VS2022 MONOFINESTRA amb OpenGL 4.6, interfÌcie GLFW 3.4, ImGui i llibreries GLM
-//******** Enric MartÌ (Setembre 2025)
+//******** PRACTICA VISUALITZACI√ì GR√ÄFICA INTERACTIVA (Escola Enginyeria - UAB)
+//******** Entorn b√†sic VS2022 MONOFINESTRA amb OpenGL 4.6, interf√≠cie GLFW 3.4, ImGui i llibreries GLM
+//******** Enric Mart√≠ (Setembre 2025)
 // objLoader.cpp: Implements the class COBJModel.
 //
-//	  VersiÛ 2.0:	- AdaptaciÛ funcions a crear un VAO per a cada material del fitxer
+//	  Versi√≥ 2.0:	- Adaptaci√≥ funcions a crear un VAO per a cada material del fitxer
 //////////////////////////////////////////////////////////////////////////////////////
-//           Wavefront OBJ Loader (C) 2000 Tim C. Schrˆder
+//           Wavefront OBJ Loader (C) 2000 Tim C. Schr√∂der
 // -------------------------------------------------------------------
 //    tcs_web@gmx.de / tcs_web@hotmail.com / tcs@thereisnofate.net
 //                 http://glvelocity.demonews.com
@@ -42,26 +42,294 @@ const short unsigned int x = 0;
 const short unsigned int y = 1;
 const short unsigned int z = 2;
 
+int g_ObjetoInspeccionado = -1;
+
 //////////////////////////////////////////////////////////////////////
 // Construcktion / Destrucktion
 //////////////////////////////////////////////////////////////////////
 
 _stdcall COBJModel::COBJModel()
 {
-	AABBhitbox = nullptr;
 	hitbox = false;
 	render = true;
+	AABBhitbox = nullptr;
+	OBBhitbox = nullptr;
+	worldOBB = nullptr;
 	// Inicialitzar la llista de VAO's.
 	initVAOList_OBJ();
 }
 
 _stdcall COBJModel::~COBJModel()
 {
+	// Borrar hitboxes
+	if (AABBhitbox) delete AABBhitbox;
+	if (OBBhitbox) delete OBBhitbox;
+	if (worldOBB) delete worldOBB;
 	// Eliminar els VAO's de la llista.
 	netejaVAOList_OBJ();
 }
 
-void loadObjPaths(const std::string& folder, std::vector<std::string>& paths)
+void COBJModel::drawOBB(GLuint shader_programID, const glm::mat4& modelMatrix)
+{
+	if (!OBBhitbox || !hitbox) return;
+
+	// Get OBB properties
+	const OBB& obb = *OBBhitbox;
+
+	// Compute the 8 corners of the OBB in local space
+	glm::vec3 corners[8];
+	glm::vec3 axes[3] = {
+		glm::vec3(obb.orientation[0]),
+		glm::vec3(obb.orientation[1]),
+		glm::vec3(obb.orientation[2])
+	};
+
+	// Generate all 8 corners using the center, halfSize, and orientation
+	for (int i = 0; i < 8; ++i) {
+		corners[i] = obb.center;
+		corners[i] += axes[0] * ((i & 1) ? obb.halfSize.x : -obb.halfSize.x);
+		corners[i] += axes[1] * ((i & 2) ? obb.halfSize.y : -obb.halfSize.y);
+		corners[i] += axes[2] * ((i & 4) ? obb.halfSize.z : -obb.halfSize.z);
+	}
+
+	// Define the 12 edges of the box (indices for line segments)
+	int edges[24] = {
+		0,1, 1,3, 3,2, 2,0,  // Bottom face
+		4,5, 5,7, 7,6, 6,4,  // Top face
+		0,4, 1,5, 3,7, 2,6   // Vertical edges
+	};
+
+	// Prepare vertices for all lines
+	glm::vec3 lineVertices[24];
+	for (int i = 0; i < 24; ++i) {
+		lineVertices[i] = corners[edges[i]];
+	}
+
+	// Create temporary VAO for the OBB
+	GLuint vao, vbo;
+	glGenVertexArrays(1, &vao);
+	glGenBuffers(1, &vbo);
+
+	glBindVertexArray(vao);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, 24 * sizeof(glm::vec3), lineVertices, GL_STATIC_DRAW);
+
+	// Set vertex attribute
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+
+	// Set shader uniforms for OBB drawing
+	glm::mat4 NormalMatrix = glm::transpose(glm::inverse(modelMatrix));
+
+	glUniformMatrix4fv(glGetUniformLocation(shader_programID, "modelMatrix"), 1, GL_FALSE, &modelMatrix[0][0]);
+	glUniformMatrix4fv(glGetUniformLocation(shader_programID, "normalMatrix"), 1, GL_FALSE, &NormalMatrix[0][0]);
+
+	// Set color to red for OBB wireframe
+	glUniform4f(glGetUniformLocation(shader_programID, "color"), 1.0f, 0.0f, 0.0f, 1.0f);
+
+	// Disable texturing for OBB
+	glUniform1i(glGetUniformLocation(shader_programID, "textur"), GL_FALSE);
+
+	// Draw the wireframe
+	glDrawArrays(GL_LINES, 0, 24);
+
+	// Cleanup
+	glDeleteBuffers(1, &vbo);
+	glDeleteVertexArrays(1, &vao);
+}
+
+
+
+void COBJModel::updateOBBWorld() {
+	const glm::mat4 M = modelMatrix();
+
+	glm::mat3 rotMat = glm::mat3(M);
+
+	glm::vec3 axisX = rotMat * OBBhitbox->orientation[0];
+	glm::vec3 axisY = rotMat * OBBhitbox->orientation[1];
+	glm::vec3 axisZ = rotMat * OBBhitbox->orientation[2];
+
+	float scaleX = glm::length(axisX);
+	float scaleY = glm::length(axisY);
+	float scaleZ = glm::length(axisZ);
+
+	worldOBB->orientation[0] = glm::normalize(axisX);
+	worldOBB->orientation[1] = glm::normalize(axisY);
+	worldOBB->orientation[2] = glm::normalize(axisZ);
+
+	worldOBB->halfSize.x = OBBhitbox->halfSize.x * scaleX;
+	worldOBB->halfSize.y = OBBhitbox->halfSize.y * scaleY;
+	worldOBB->halfSize.z = OBBhitbox->halfSize.z * scaleZ;
+
+	worldOBB->center = glm::vec3(M * glm::vec4(OBBhitbox->center, 1.0f));
+}
+
+void ComputeOBB(Vector3D* vertices, unsigned int vertexCount, OBB* obb)
+{
+	if (vertexCount == 0) return;
+
+	// Step 1: Compute the mean (center) of vertices
+	glm::vec3 mean(0.0f);
+	for (unsigned int i = 0; i < vertexCount; ++i)
+	{
+		mean.x += vertices[i].fX;
+		mean.y += vertices[i].fY;
+		mean.z += vertices[i].fZ;
+	}
+	mean /= static_cast<float>(vertexCount);
+
+	// Step 2: Compute the covariance matrix
+	glm::mat3 covariance(0.0f);
+
+	for (unsigned int i = 0; i < vertexCount; ++i)
+	{
+		glm::vec3 diff = glm::vec3(vertices[i].fX, vertices[i].fY, vertices[i].fZ) - mean;
+		covariance[0][0] += diff.x * diff.x;
+		covariance[0][1] += diff.x * diff.y;
+		covariance[0][2] += diff.x * diff.z;
+		covariance[1][0] += diff.y * diff.x;
+		covariance[1][1] += diff.y * diff.y;
+		covariance[1][2] += diff.y * diff.z;
+		covariance[2][0] += diff.z * diff.x;
+		covariance[2][1] += diff.z * diff.y;
+		covariance[2][2] += diff.z * diff.z;
+	}
+
+	// Normalize by N-1 for sample covariance
+	if (vertexCount > 1)
+		covariance /= static_cast<float>(vertexCount - 1);
+	else
+		covariance /= static_cast<float>(vertexCount);
+
+	// Step 3: Compute eigenvectors (principal axes)
+	// We'll use a simple Jacobi method for 3x3 symmetric matrix
+	glm::vec3 eigenvalues;
+	glm::mat3 eigenvectors;
+	ComputeEigenvectors(covariance, eigenvalues, eigenvectors);
+
+	// Step 4: Project all vertices onto the principal axes to find extents
+	glm::vec3 minProj(1e9f, 1e9f, 1e9f);
+	glm::vec3 maxProj(-1e9f, -1e9f, -1e9f);
+
+	// Get the axes from the eigenvectors
+	glm::vec3 axisX = glm::normalize(glm::vec3(eigenvectors[0]));
+	glm::vec3 axisY = glm::normalize(glm::vec3(eigenvectors[1]));
+	glm::vec3 axisZ = glm::normalize(glm::vec3(eigenvectors[2]));
+
+	for (unsigned int i = 0; i < vertexCount; ++i)
+	{
+		glm::vec3 vertex(vertices[i].fX, vertices[i].fY, vertices[i].fZ);
+		glm::vec3 localVertex = vertex - mean;
+
+		// Project onto each axis
+		float projX = glm::dot(localVertex, axisX);
+		float projY = glm::dot(localVertex, axisY);
+		float projZ = glm::dot(localVertex, axisZ);
+
+		minProj.x = std::min(minProj.x, projX);
+		maxProj.x = std::max(maxProj.x, projX);
+		minProj.y = std::min(minProj.y, projY);
+		maxProj.y = std::max(maxProj.y, projY);
+		minProj.z = std::min(minProj.z, projZ);
+		maxProj.z = std::max(maxProj.z, projZ);
+	}
+
+	// Step 5: Compute OBB properties
+	glm::vec3 halfSize = (maxProj - minProj) * 0.5f;
+	glm::vec3 centerOffset = axisX * (minProj.x + halfSize.x) +
+		axisY * (minProj.y + halfSize.y) +
+		axisZ * (minProj.z + halfSize.z);
+
+	obb->center = mean + centerOffset;
+	obb->halfSize = halfSize;
+	obb->orientation = glm::mat3(axisX, axisY, axisZ);
+}
+
+void ComputeOBBForWalls(Vector3D* vertices, unsigned int vertexCount, OBB* obb)
+{
+	if (vertexCount < 3) return;
+
+	// Try to detect if this is a wall/planar object
+	// Compute the convex hull or use a simpler approach
+
+	// Step 1: Compute the center
+	glm::vec3 center(0.0f);
+	for (unsigned int i = 0; i < vertexCount; ++i) {
+		center.x += vertices[i].fX;
+		center.y += vertices[i].fY;
+		center.z += vertices[i].fZ;
+	}
+	center /= static_cast<float>(vertexCount);
+
+	// Step 2: Try to find dominant directions by analyzing edges
+	std::vector<glm::vec3> uniqueDirections;
+
+	// Collect unique edge directions
+	for (unsigned int i = 0; i < vertexCount; ++i) {
+		for (unsigned int j = i + 1; j < vertexCount; ++j) {
+			glm::vec3 v1(vertices[i].fX, vertices[i].fY, vertices[i].fZ);
+			glm::vec3 v2(vertices[j].fX, vertices[j].fY, vertices[j].fZ);
+			glm::vec3 edge = glm::normalize(v2 - v1);
+
+			// Check if this direction is unique (not parallel to existing ones)
+			bool isUnique = true;
+			for (const glm::vec3& dir : uniqueDirections) {
+				if (glm::length(glm::cross(dir, edge)) < 0.1f) {
+					isUnique = false;
+					break;
+				}
+			}
+			if (isUnique && uniqueDirections.size() < 3) {
+				uniqueDirections.push_back(edge);
+			}
+		}
+	}
+
+	// If we found at least 2 unique directions, use them
+	if (uniqueDirections.size() >= 2) {
+		glm::vec3 axis1 = glm::normalize(uniqueDirections[0]);
+		glm::vec3 axis2 = glm::normalize(uniqueDirections[1]);
+		glm::vec3 axis3 = glm::normalize(glm::cross(axis1, axis2));
+
+		// Re-orthogonalize
+		axis2 = glm::normalize(glm::cross(axis3, axis1));
+		axis1 = glm::normalize(glm::cross(axis2, axis3));
+
+		// Project vertices onto these axes
+		glm::vec3 minProj(1e9f), maxProj(-1e9f);
+
+		for (unsigned int i = 0; i < vertexCount; ++i) {
+			glm::vec3 v(vertices[i].fX, vertices[i].fY, vertices[i].fZ);
+			glm::vec3 local = v - center;
+
+			float proj1 = glm::dot(local, axis1);
+			float proj2 = glm::dot(local, axis2);
+			float proj3 = glm::dot(local, axis3);
+
+			minProj.x = std::min(minProj.x, proj1);
+			maxProj.x = std::max(maxProj.x, proj1);
+			minProj.y = std::min(minProj.y, proj2);
+			maxProj.y = std::max(maxProj.y, proj2);
+			minProj.z = std::min(minProj.z, proj3);
+			maxProj.z = std::max(maxProj.z, proj3);
+		}
+
+		glm::vec3 halfSize = (maxProj - minProj) * 0.5f;
+		glm::vec3 centerOffset = axis1 * (minProj.x + halfSize.x) +
+			axis2 * (minProj.y + halfSize.y) +
+			axis3 * (minProj.z + halfSize.z);
+
+		obb->center = center + centerOffset;
+		obb->halfSize = halfSize;
+		obb->orientation = glm::mat3(axis1, axis2, axis3);
+	}
+	else {
+		// Fall back to PCA method
+		ComputeOBB(vertices, vertexCount, obb);
+	}
+}
+
+void loadObjPaths(const std::string& folder, std::vector<std::string> &paths)
 {
 	// Pattern: folder/*.obj
 	std::string searchPattern = folder + "/*.obj";
@@ -126,7 +394,7 @@ void loadObjPathsRec(const std::string& folder, std::vector<std::pair<std::strin
 				// Check if it's an .obj file
 				if (filename.size() > 4 && filename.substr(filename.size() - 4) == ".obj")
 				{
-					printf("Loading file %s\n", filename.c_str());
+					printf("[PathFinder] Getting pathfile %s\n", filename.c_str());
 					// Replace backslashes with forward slashes
 					/*for (char& c : formatted)
 						if (c == '\\') c = '/';*/
@@ -149,6 +417,8 @@ int _stdcall COBJModel::LoadModel(char* szFileName)
 	////////////////////////////////////////////////////////////////////////
 	// Load a OBJ file and render its data into a display list
 	////////////////////////////////////////////////////////////////////////
+	printf("[OBJLoader] Loading model %s\n", szFileName);
+
 	OBJFileInfo OBJInfo;		  // General informations about the model
 	OBJFileInfo CurrentIndex;	  // Current array index
 	char szString[MAX_STR_SIZE];  // Buffer string for reading the file 
@@ -172,18 +442,21 @@ int _stdcall COBJModel::LoadModel(char* szFileName)
 	// Open the OBJ file
 	////////////////////////////////////////////////////////////////////////
 	errno = 0;
-	errno = fopen_s(&hFile, szFileName, "r"); // FunciÛ Visual 2005 i 2010
+	errno = fopen_s(&hFile, szFileName, "r"); // Funci√≥ Visual 2005 i 2010
 
 	// Success ?
 	if (errno != 0)
 		return errno; //FALSE;
 
 	// Confirm if it's a hitbox
-	if (strstr(szFileName, "HITBOX") != nullptr) hitbox = true;
+	if (strstr(szFileName, "HITBOX") != nullptr) 
+	{
+		this->setAsHitbox();
+	}
 
 	////////////////////////////////////////////////////////////////////////
 	// Allocate space for structures that hold the model data
-	////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////	
 
 	// Which data types are stored in the file ? How many of each type ?
 	GetFileInfo(hFile, &OBJInfo, szBasePath);
@@ -314,13 +587,20 @@ int _stdcall COBJModel::LoadModel(char* szFileName)
 		for (int i = 0; i < numMaterials; i++) vMaterials[i] = pMaterials[i];
 	}
 
-	if (hitbox)
+	////////////////////////////////////////////////////////////////////////
+	// Compute hitboxes before deleting vertices
+	////////////////////////////////////////////////////////////////////////
+	if (this->isHitbox())
 	{
 		////////////////////////////////////////////////////////////////////////
 		// Compute AABB before deleting vertices
 		////////////////////////////////////////////////////////////////////////
 		AABBhitbox = new AABB;
+		OBBhitbox = new OBB;
+		worldOBB = new OBB;
 
+		// Compute AABB
+		printf("[OBJLoader] [Hitbox] Computing AABB for %s\n", szFileName);
 		AABBhitbox->min = glm::vec3(1e9f, 1e9f, 1e9f);
 		AABBhitbox->max = glm::vec3(-1e9f, -1e9f, -1e9f);
 
@@ -339,7 +619,39 @@ int _stdcall COBJModel::LoadModel(char* szFileName)
 			AABBhitbox->max.y = std::max(AABBhitbox->max.y, pos.y);
 			AABBhitbox->max.z = std::max(AABBhitbox->max.z, pos.z);
 		}
+
+		//glm::vec3 center = (AABBhitbox->min + AABBhitbox->max) * 0.5f;
+
+		//// Shifting all vertices around the center
+
+		//for (unsigned int v = 0; v < OBJInfo.iVertexCount; v++)
+		//{
+		//	pVertices[v].fX -= center.x;
+		//	pVertices[v].fY -= center.y;
+		//	pVertices[v].fZ -= center.z;
+		//}
+
+		//position = center;
+
+		// Compute OBB
+		//ComputeOBB(pVertices, OBJInfo.iVertexCount, OBBhitbox);
+		printf("[OBJLoader] [Hitbox] Computing OBB for %s\n", szFileName);
+		ComputeOBBForWalls(pVertices, OBJInfo.iVertexCount, OBBhitbox);
+
+		// Method 2 =============
+
+		//OBBhitbox->center = (AABBhitbox->min + AABBhitbox->max) * 0.5f;
+		//OBBhitbox->halfSize = (AABBhitbox->max - AABBhitbox->min) * 0.5f;
+
+		//// Identity orientation (local OBJ axes)
+		//OBBhitbox->orientation = glm::mat3(1.0f);
+
+		// Method 3 =============
+
+		//OBBhitbox->orientation = glm::mat3(modelMatrix); // take rotation part
+		//OBBhitbox->center = glm::vec3(modelMatrix * glm::vec4(OBBhitbox->center, 1.0));
 	}
+
 
 	// Render all faces into a VAO
 		//auxVAO = RenderToVAOList(pFaces, OBJInfo.iFaceCount, pMaterials, prim_Id);
@@ -609,7 +921,7 @@ CVAO _stdcall COBJModel::RenderToVAOList(const Face* pFaces,
 
 	objVAO.vaoId = 0;	objVAO.vboId = 0;	objVAO.eboId = 0; objVAO.nVertexs = 0; objVAO.nIndices = 0;
 
-	std::vector <double> vertices, colors, normals, textures;		// DefiniciÛ vectors din‡mics per a vertexs i colors 
+	std::vector <double> vertices, colors, normals, textures;		// Definici√≥ vectors din√†mics per a vertexs i colors 
 	vertices.resize(0);		colors.resize(0);	normals.resize(0);		textures.resize(0);// Reinicialitzar vectors
 
 	// Obtenir color actual definit en OpenGL amb glColor();
@@ -849,7 +1161,7 @@ CVAO _stdcall COBJModel::RenderToVAOList(const Face* pFaces,
 	//glEndList();
 
 // ----------------------- VAO
-// CreaciÛ d'un VAO i un VBO i c‡rrega de la geometria. Guardar identificador VAO identificador VBO a struct CVAO.
+// Creaci√≥ d'un VAO i un VBO i c√†rrega de la geometria. Guardar identificador VAO identificador VBO a struct CVAO.
 	objVAO = load_TRIANGLES_VAO(vertices, normals, colors, textures);
 
 	return objVAO;
@@ -873,7 +1185,7 @@ void _stdcall COBJModel::loadToVAOList(const Face* pFaces,
 	CVAO objVAO;
 	objVAO.vaoId = 0;	objVAO.vboId = 0;	objVAO.eboId = 0;	 objVAO.nVertexs = 0; 	objVAO.nIndices = 0;
 
-	std::vector <double> vertices, colors, normals, textures;		// DefiniciÛ vectors din‡mics per a vertexs i colors 
+	std::vector <double> vertices, colors, normals, textures;		// Definici√≥ vectors din√†mics per a vertexs i colors 
 	vertices.resize(0);		colors.resize(0);	normals.resize(0);		textures.resize(0);// Reinicialitzar vectors
 
 	std::vector <int>::size_type nv = vertices.size();	// Tamany del vector vertices en elements.
@@ -901,7 +1213,7 @@ void _stdcall COBJModel::loadToVAOList(const Face* pFaces,
 				if (iPreviousMaterial != (int)pFaces[i].iMaterialIndex)
 				{	// Canvi de material per a les cares del fitxer OBJ
 					if (nv > 0) {
-						// CreaciÛ d'un VAO i un VBO i c‡rrega de la geometria. Guardar identificador VAO identificador VBO a struct CVAO.
+						// Creaci√≥ d'un VAO i un VBO i c√†rrega de la geometria. Guardar identificador VAO identificador VBO a struct CVAO.
 						objVAO = load_TRIANGLES_VAO(vertices, normals, colors, textures);
 						Set_VAOList_OBJ(index_VAO, objVAO);
 						index_VAO = index_VAO + 1;
@@ -1110,7 +1422,7 @@ void _stdcall COBJModel::loadToVAOList(const Face* pFaces,
 	nv = vertices.size();	// Tamany del vector vertices en elements.
 
 	if (nv != 0)
-	{	// CreaciÛ del darrer VAO i un VBO i c‡rrega de la geometria. Guardar identificador VAO identificador VBO a struct CVAO.
+	{	// Creaci√≥ del darrer VAO i un VBO i c√†rrega de la geometria. Guardar identificador VAO identificador VBO a struct CVAO.
 		objVAO = load_TRIANGLES_VAO(vertices, normals, colors, textures);
 		Set_VAOList_OBJ(index_VAO, objVAO);
 	}
@@ -1427,23 +1739,21 @@ void _stdcall COBJModel::MakePath(char szFileAndPath[])
 }
 
 void _stdcall COBJModel::GetTokenParameter(char szString[],
-	const unsigned int iStrSize,
-	FILE* hFile)
+	const unsigned int iStrSize, FILE* hFile)
 {
-	if (!fgets(szString, iStrSize, hFile))
-		return;
+	////////////////////////////////////////////////////////////////////////
+	// Read the parameter of a token, remove space and newline character
+	////////////////////////////////////////////////////////////////////////
 
-	size_t len = strlen(szString);
-	if (len > 0 && szString[len - 1] == '\n') {
-		szString[len - 1] = '\0';
-		--len;
-	}
+	// Read the parameter after the token
+	fgets(szString, iStrSize, hFile);
 
-	if (len > 0) {
-		memmove(szString, szString + 1, len);
-	}
+	// Remove space before the token			
+	strcpy(szString, &szString[1]);
+
+	// Remove newline character after the token
+	szString[strlen(szString) - 1] = char('\0');
 }
-
 
 static int CompareFaceByMaterial(const void* Arg1, const void* Arg2)
 {
@@ -1480,8 +1790,8 @@ int COBJModel::LoadTexture2(const char szFileName[_MAX_PATH])
 
 
 	// Open the image file for reading
-	// file=fopen(filename,"r");					// FunciÛ Visual Studio 6.0
-	errno = fopen_s(&file, szFileName, "r");			// FunciÛ Visual 2005
+	// file=fopen(filename,"r");					// Funci√≥ Visual Studio 6.0
+	errno = fopen_s(&file, szFileName, "r");			// Funci√≥ Visual 2005
 
 	// If the file is empty (or non existent) print an error and return false
 	// if (file == NULL)
@@ -1493,8 +1803,8 @@ int COBJModel::LoadTexture2(const char szFileName[_MAX_PATH])
 	// Close the image file
 	fclose(file);
 
-	// SOIL_load_OGL_texture: FunciÛ que llegeix la imatge del fitxer filename
-	//				si Ès compatible amb els formats SOIL (BMP,JPG,GIF,TIF,TGA,etc.)
+	// SOIL_load_OGL_texture: Funci√≥ que llegeix la imatge del fitxer filename
+	//				si √©s compatible amb els formats SOIL (BMP,JPG,GIF,TIF,TGA,etc.)
 	//				i defineix la imatge com a textura OpenGL retornant l'identificador 
 	//				de textura OpenGL.
 	iTexture = SOIL_load_OGL_texture
@@ -1543,7 +1853,7 @@ void _stdcall COBJModel::EliminaLlista(int prim_Id)
 	deleteVAOList(prim_Id);
 }
 
-// ------------------------ GESTI” VAOLIST
+// ------------------------ GESTI√ì VAOLIST
 void _stdcall COBJModel::initVAOList_OBJ()
 {
 	int i;
@@ -1653,8 +1963,8 @@ void _stdcall COBJModel::draw_TriVAO_OBJ(GLuint sh_programID)
 
 	for (i = 0; i < numMaterials; i++)
 	{
-		UseMaterial_ShaderID(sh_programID, vMaterials[i]);	// ActivaciÛ Material i-Ëssim
+		UseMaterial_ShaderID(sh_programID, vMaterials[i]);	// Activaci√≥ Material i-√®ssim
 
-		draw_TriVAO_Object_OBJ(i);							// Dibuix objecte i-Ëssim
+		draw_TriVAO_Object_OBJ(i);							// Dibuix objecte i-√®ssim
 	}
 }

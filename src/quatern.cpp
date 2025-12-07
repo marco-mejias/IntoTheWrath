@@ -1,9 +1,9 @@
-//******** PRACTICA VISUALITZACIÓ 3D (Facultat de Ciències / Escola d'Enginyeria - UAB)
-//******** Entorn bàsic VS2017 MULTIFINESTRA amb OpenGL, interfície MFC i Status Bar
-//******** Ferran Poveda, Marc Vivet, Carme Julià, Débora Gil, Enric Martí (Setembre 2019)
-// quatern.cpp : Funcions bàsiques de manipulació i interpolació de
+//******** PRACTICA VISUALITZACIÃ“ 3D (Facultat de CiÃ¨ncies / Escola d'Enginyeria - UAB)
+//******** Entorn bÃ sic VS2017 MULTIFINESTRA amb OpenGL, interfÃ­cie MFC i Status Bar
+//******** Ferran Poveda, Marc Vivet, Carme JuliÃ , DÃ©bora Gil, Enric MartÃ­ (Setembre 2019)
+// quatern.cpp : Funcions bÃ siques de manipulaciÃ³ i interpolaciÃ³ de
 //					 quaternions. 
-// EixAngle2Quat i Quat2Matrix són funcions adaptades de Ben Humphrey (Digiben) 
+// EixAngle2Quat i Quat2Matrix sÃ³n funcions adaptades de Ben Humphrey (Digiben) 
 //	GameTutorials (www.gametutorials.com).
 
 
@@ -48,10 +48,10 @@ void EixAngleToQuat(double X, double Y, double Z, double degree, GL_Quat &q)
 	GL_Quat auxq;
 //	GL_Quat qPi;
 
-//	qPi.w=1.0;	qPi.x=0.0;	qPi.y=0.0;	qPi.z=0.0;				// Quaternió Identitat
-//	if ((Y==0) && (Z==0)) {qPi.w=0.0;	qPi.x=1.0;}				// Quaternió Rotació pi graus (1,0,0)
-//		else if ((X==0) && (Z==0)) {qPi.w=0.0;	qPi.y=1.0;}		// Quaternió Rotació pi graus (0,1,0)
-//				if ((X==0) && (Z==0)) {qPi.w=0.0;	qPi.z=1.0;}	// Quaternió Rotació pi graus (0,0,1)
+//	qPi.w=1.0;	qPi.x=0.0;	qPi.y=0.0;	qPi.z=0.0;				// QuaterniÃ³ Identitat
+//	if ((Y==0) && (Z==0)) {qPi.w=0.0;	qPi.x=1.0;}				// QuaterniÃ³ RotaciÃ³ pi graus (1,0,0)
+//		else if ((X==0) && (Z==0)) {qPi.w=0.0;	qPi.y=1.0;}		// QuaterniÃ³ RotaciÃ³ pi graus (0,1,0)
+//				if ((X==0) && (Z==0)) {qPi.w=0.0;	qPi.z=1.0;}	// QuaterniÃ³ RotaciÃ³ pi graus (0,0,1)
 				
 // First we want to convert the degrees to radians 
 //		since the angle is assumed to be in radians
@@ -170,18 +170,18 @@ void QuatSetValue(GLdouble angle, GLdouble x, GLdouble y, GLdouble z, GL_Quat &q
 //					mathematicians came up with these equations for a quaternion to 
 //					matrix converion:
 //
-//     ¦        2     2												 ¦
-//     ¦ 1 - (2y  + 2z )   2xy + 2zw         2xz - 2yw			0	 ¦
-//     ¦															 ¦
-//     ¦                          2     2							 ¦
-// M = ¦ 2xy - 2zw         1 - (2x  + 2z )   2zy + 2xw			0	 ¦
-//     ¦															 ¦
-//     ¦                                            2     2			 ¦
-//     ¦ 2xz + 2yw         2yz - 2xw         1 - (2x  + 2y )	0	 ¦
-//     ¦															 ¦
-//     ¦															 ¦
-//     ¦ 0				   0				 0					1	 |													 ¦
-//     ¦															 ¦
+//     Â¦        2     2												 Â¦
+//     Â¦ 1 - (2y  + 2z )   2xy + 2zw         2xz - 2yw			0	 Â¦
+//     Â¦															 Â¦
+//     Â¦                          2     2							 Â¦
+// M = Â¦ 2xy - 2zw         1 - (2x  + 2z )   2zy + 2xw			0	 Â¦
+//     Â¦															 Â¦
+//     Â¦                                            2     2			 Â¦
+//     Â¦ 2xz + 2yw         2yz - 2xw         1 - (2x  + 2y )	0	 Â¦
+//     Â¦															 Â¦
+//     Â¦															 Â¦
+//     Â¦ 0				   0				 0					1	 |													 Â¦
+//     Â¦															 Â¦
 // 
 // This is of course a 4x4 matrix.  Notice that a rotational matrix can just
 //	be a 3x3 matrix, but since OpenGL uses a 4x4 matrix, we need to conform to the man.
@@ -226,7 +226,7 @@ void QuatToMatrix(GL_Quat q,GLdouble* pMatrix)
 
 //EulerToQuat: Converts representation of a rotation from Euler angles to
 //				quaternion representation
-//	PARÀMETRES:		roll  - rotation around X axis
+//	PARÃ€METRES:		roll  - rotation around X axis
 //					pitch - rotation around Y axis
 //					yaw   - rotation around Z axis
 //			rotations are performed in the following order:
@@ -345,7 +345,7 @@ void MatrixToQuat(double *pMatrix, GL_Quat &quat)
 }
 
 
-//----------------- INTERPOLACIÓ PER QUATERNIONS (linial i esfèrica)  ------
+//----------------- INTERPOLACIÃ“ PER QUATERNIONS (linial i esfÃ¨rica)  ------
 
 
 // QuaSLerp: Smoothly (spherically, shortest path on a quaternion sphere) 
@@ -354,9 +354,9 @@ void MatrixToQuat(double *pMatrix, GL_Quat &quat)
 //				As t goes from 0 to 1, qt goes from p to q.
 //				slerp(p,q,t) = (p*sin((1-t)*omega) + q*sin(t*omega)) / sin(omega)
 
-//    PARÀMETRES:	- from, to: Quaternions inicial i final
-//					- t: Paràmetre (0,1)
-//					- res: Quaternió interpolat
+//    PARÃ€METRES:	- from, to: Quaternions inicial i final
+//					- t: ParÃ metre (0,1)
+//					- res: QuaterniÃ³ interpolat
 //		 
 void QuatSlerp(GL_Quat from, GL_Quat to, GLdouble t,GL_Quat &res)
 {
@@ -415,10 +415,10 @@ void QuatSlerp(GL_Quat from, GL_Quat to, GLdouble t,GL_Quat &res)
 
 
 // QuatLerp: Linearly interpolates between two quaternion positions.
-//				Ràpid però no tant suau com Slerp.
-//    PARÀMETRES:	- from, to: Quaternions inicial i final
-//					- t: Paràmetre (0,1)
-//					- res: Quaternió interpolat
+//				RÃ pid perÃ² no tant suau com Slerp.
+//    PARÃ€METRES:	- from, to: Quaternions inicial i final
+//					- t: ParÃ metre (0,1)
+//					- res: QuaterniÃ³ interpolat
 //		 
 void QuatLerp(GL_Quat from, GL_Quat to, GLdouble t, GL_Quat &res)
 {
@@ -515,7 +515,7 @@ void QuatInverse(GL_Quat q1, GL_Quat &quat)
 
 //QuatSetFromAx: Constructs quaternion to rotate from one direction vector to 
 //				another
-//	PARÀMETRES: GLdouble (x1, y1, z1 - from vector), 
+//	PARÃ€METRES: GLdouble (x1, y1, z1 - from vector), 
 //				GLdouble (x2, y2, z2 - to vector), GL_QUAT* (resulting quaternion)
 //	COMENTARIS: Two vectors have to be UNIT vectors (so make sure you normalize
 //					them before calling this function
@@ -607,7 +607,7 @@ void QuatSetFromAx(GLdouble x1,GLdouble y1, GLdouble z1,
 
 
 // QuatMul: Multiplies two quaternions
-//    PARÀMETRES:	q1,q2: First quaternion
+//    PARÃ€METRES:	q1,q2: First quaternion
 //					res: Destination quaternion (res=q1 * q2)
 void QuatMul(GL_Quat q1, GL_Quat q2, GL_Quat &res)
 {
@@ -624,7 +624,7 @@ void QuatMul(GL_Quat q1, GL_Quat q2, GL_Quat &res)
 
 
 // QuatAdd: Add two quaternions
-//    PARÀMETRES:	q1,q2: First quaternion
+//    PARÃ€METRES:	q1,q2: First quaternion
 //					res: Destination quaternion (res=q1 + q2)
 void QuatAdd(GL_Quat q1, GL_Quat q2, GL_Quat &res)
 {
@@ -639,7 +639,7 @@ void QuatAdd(GL_Quat q1, GL_Quat q2, GL_Quat &res)
 
 
 // QuatSub: Subtracts two quaternions
-//    PARÀMETRES:	q1,q2: First quaternion
+//    PARÃ€METRES:	q1,q2: First quaternion
 //					res: Destination quaternion (res=q1 - q2)
 void QuatSub(GL_Quat q1, GL_Quat q2, GL_Quat &res)
 {
@@ -654,7 +654,7 @@ void QuatSub(GL_Quat q1, GL_Quat q2, GL_Quat &res)
 
 
 // QuatDiv: Divide two quaternions
-//    PARÀMETRES:	q1,q2: First quaternion
+//    PARÃ€METRES:	q1,q2: First quaternion
 //					res: Destination quaternion
 void QuatDiv(GL_Quat q1, GL_Quat q2, GL_Quat &res)
 {
@@ -689,7 +689,7 @@ void QuatCopy(GL_Quat q1, GL_Quat &q2)
 
 
 // QuatSquare: Square quaternion
-//    PARÀMETRES:	q1: First quaternion
+//    PARÃ€METRES:	q1: First quaternion
 //					res: Destination quaternion
 void QuatSquare(GL_Quat q1, GL_Quat &res)
 {
@@ -705,7 +705,7 @@ void QuatSquare(GL_Quat q1, GL_Quat &res)
 
 
 // QuatSqrt: Find square root of a quaternion
-//    PARÀMETRES:	q1: First quaternion
+//    PARÃ€METRES:	q1: First quaternion
 //					res: Destination quaternion
 void QuatSqrt(GL_Quat q1, GL_Quat &res)
 {
@@ -734,8 +734,8 @@ void QuatSqrt(GL_Quat q1, GL_Quat &res)
 }
 
 
-// QuatDot: Funció que retorna el producte escalar de dos quaternions unitaris
-//    PARÀMETRES:	q1: First quaternion
+// QuatDot: FunciÃ³ que retorna el producte escalar de dos quaternions unitaris
+//    PARÃ€METRES:	q1: First quaternion
 //					q2: Destination quaternion
 //    COMETARIS: Quaternion has to be normalized (i.e. it's a unit quaternion)
 GLdouble QuatDot(GL_Quat q1, GL_Quat q2)
@@ -752,7 +752,7 @@ GLdouble QuatLength(GL_Quat q1)
 
 
 // QuatNegate: egates vector part of a quaternion
-//    PARÀMETRES:	q1: Source quaternion
+//    PARÃ€METRES:	q1: Source quaternion
 //					q2: Destination quaternion
 void QuatNegate(GL_Quat q1, GL_Quat &q2)
 {
@@ -766,7 +766,7 @@ void QuatNegate(GL_Quat q1, GL_Quat &q2)
 
 
 // QuatExp: Calculates exponent of a quaternion
-//    PARÀMETRES:	q1: Source quaternion
+//    PARÃ€METRES:	q1: Source quaternion
 //					q2: Destination quaternion
 void QuatExp(GL_Quat q1, GL_Quat &q2)
 {
@@ -786,7 +786,7 @@ void QuatExp(GL_Quat q1, GL_Quat &q2)
 
 
 // QuatLog: Calculates natural logarithm of a quaternion
-//    PARÀMETRES:	q1: Source quaternion
+//    PARÃ€METRES:	q1: Source quaternion
 //					q2: Destination quaternion
 void QuatLog(GL_Quat q1, GL_Quat &q2)
 {
@@ -808,7 +808,7 @@ void QuatLog(GL_Quat q1, GL_Quat &q2)
 
 // QuatLnDif: Computes the "natural log difference" of two quaternions,
 //				q1 and q2 as  ln(qinv(q1)*q2)
-//    PARÀMETRES:	q1,q2: Source quaternions
+//    PARÃ€METRES:	q1,q2: Source quaternions
 //					res: Destination quaternion
 void QuatLnDif(GL_Quat q1, GL_Quat q2, GL_Quat &res)
 {

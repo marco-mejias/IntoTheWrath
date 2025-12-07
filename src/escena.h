@@ -1,13 +1,13 @@
-//******** PRACTICA VISUALITZACI” GR¿FICA INTERACTIVA (Escola Enginyeria - UAB)
-//******** Entorn b‡sic VS2022 MONOFINESTRA amb OpenGL 4.6, interfÌcie GLFW 3.4, ImGui i llibreries GLM
-//******** Ferran Poveda, Marc Vivet, Carme Juli‡, DÈbora Gil, Enric MartÌ (Setembre 2025)
+//******** PRACTICA VISUALITZACI√ì GR√ÄFICA INTERACTIVA (Escola Enginyeria - UAB)
+//******** Entorn b√†sic VS2022 MONOFINESTRA amb OpenGL 4.6, interf√≠cie GLFW 3.4, ImGui i llibreries GLM
+//******** Ferran Poveda, Marc Vivet, Carme Juli√†, D√©bora Gil, Enric Mart√≠ (Setembre 2025)
 // escena.h : interface de escena.cpp
 //
 
 #ifndef GLSOURCE_H
 #define GLSOURCE_H
 
-// Entorn VGI: OBJECTE OBJ. Include per la definiciÛ de l'objecte Obj_OBJ
+// Entorn VGI: OBJECTE OBJ. Include per la definici√≥ de l'objecte Obj_OBJ
 #include "objLoader.h"	
 
 /* ------------------------------------------------------------------------- */
@@ -24,7 +24,7 @@ void dibuixa_EscenaGL(GLuint sh_programID, bool eix, GLuint axis_Id, CMask3D rei
 	COBJModel* objecteOBJ,
 	glm::mat4 MatriuVista, glm::mat4 MatriuTG);
 
-// Entorn VGI: dibuixa -> FunciÛ que dibuixa objectes simples de la llibreria GLUT segons obj
+// Entorn VGI: dibuixa -> Funci√≥ que dibuixa objectes simples de la llibreria GLUT segons obj
 void dibuixa(GLuint sh_programID, char obj, glm::mat4 MatriuVista, glm::mat4 MatriuTG);
 
 // Entorn VGI: Objecte Arc

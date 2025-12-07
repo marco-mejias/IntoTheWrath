@@ -159,12 +159,14 @@ void dibuixa_EscenaGL(GLuint sh_programID, bool eix, GLuint axis_Id, CMask3D rei
 
 	else
 	{
-		ModelMatrix = MatriuTG;
-		// Pas ModelView Matrix a shader
-		glUniformMatrix4fv(glGetUniformLocation(sh_programID, "modelMatrix"), 1, GL_FALSE, &ModelMatrix[0][0]);
-		NormalMatrix = transpose(inverse(MatriuVista * ModelMatrix));
-		// Pas NormalMatrix a shader
-		glUniformMatrix4fv(glGetUniformLocation(sh_programID, "normalMatrix"), 1, GL_FALSE, &NormalMatrix[0][0]);
+		//ModelMatrix = MatriuTG;
+		//// Pas ModelView Matrix a shader
+		//glUniformMatrix4fv(glGetUniformLocation(sh_programID, "modelMatrix"), 1, GL_FALSE, &ModelMatrix[0][0]);
+		//
+		//
+		//NormalMatrix = transpose(inverse(MatriuVista * ModelMatrix));
+		//// Pas NormalMatrix a shader
+		//glUniformMatrix4fv(glGetUniformLocation(sh_programID, "normalMatrix"), 1, GL_FALSE, &NormalMatrix[0][0]);
 
 		// Definir característiques material de cada punt
 		SeleccionaColorMaterial(sh_programID, col_object, sw_mat);
@@ -187,7 +189,6 @@ void dibuixa_EscenaGL(GLuint sh_programID, bool eix, GLuint axis_Id, CMask3D rei
 				continue;
 			}
 
-
 			if (objecteOBJ->getName() == "patoso.obj")
 			{
 				// Saltamos este objecte → no es dibuixa
@@ -199,6 +200,15 @@ void dibuixa_EscenaGL(GLuint sh_programID, bool eix, GLuint axis_Id, CMask3D rei
 				// Saltamos este objecte → no es dibuixa
 				continue;
 			}
+
+
+			// Pas ModelView Matrix a shader
+			ModelMatrix = objecteOBJ->modelMatrix();  // DIFFERENT PER OBJECT
+			glUniformMatrix4fv(glGetUniformLocation(sh_programID, "modelMatrix"), 1, GL_FALSE, &ModelMatrix[0][0]);
+
+			NormalMatrix = transpose(inverse(MatriuVista * ModelMatrix));
+			// Pas NormalMatrix a shader
+			glUniformMatrix4fv(glGetUniformLocation(sh_programID, "normalMatrix"), 1, GL_FALSE, &NormalMatrix[0][0]);
 
 			objecteOBJ->draw_TriVAO_OBJ(sh_programID);	// Dibuixar VAO a pantalla
 		}

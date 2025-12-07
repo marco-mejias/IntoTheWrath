@@ -1,11 +1,11 @@
-//******** PRACTICA VISUALITZACI” GR¿FICA INTERACTIVA (Escola Enginyeria - UAB)
-//******** Entorn b‡sic VS2022 MONOFINESTRA amb OpenGL 4.6, interfÌcie GLFW 3.4, ImGui i llibreries GLM
-//******** Ferran Poveda, Marc Vivet, Carme Juli‡, DÈbora Gil, Enric MartÌ (Setembre 2025)
-// visualitzacio.cpp : Funcions de visualitzaciÛ i pantalla
-// FUNCIONS:	- IluminaciÛ (Iluminacio)
-//				- VisualitzaciÛ Ortogr‡fica (ProjeccioOrto i Ortografica)
-//				- VisualitzaciÛ Perspectiva amb coord. esfËriques (ProjeccioPerspectiva(),Vista_Esferica())
-//              - VisualitzaciÛ Perspectiva amb navegaciÛ per tecles cursor (ProjeccioPerspectiva(),Vista_Navega())
+//******** PRACTICA VISUALITZACI√ì GR√ÄFICA INTERACTIVA (Escola Enginyeria - UAB)
+//******** Entorn b√†sic VS2022 MONOFINESTRA amb OpenGL 4.6, interf√≠cie GLFW 3.4, ImGui i llibreries GLM
+//******** Ferran Poveda, Marc Vivet, Carme Juli√†, D√©bora Gil, Enric Mart√≠ (Setembre 2025)
+// visualitzacio.cpp : Funcions de visualitzaci√≥ i pantalla
+// FUNCIONS:	- Iluminaci√≥ (Iluminacio)
+//				- Visualitzaci√≥ Ortogr√†fica (ProjeccioOrto i Ortografica)
+//				- Visualitzaci√≥ Perspectiva amb coord. esf√®riques (ProjeccioPerspectiva(),Vista_Esferica())
+//              - Visualitzaci√≥ Perspectiva amb navegaci√≥ per tecles cursor (ProjeccioPerspectiva(),Vista_Navega())
 //				- Dibuixar els eixos (deixos)
 //				- Incorporar plans de Grid2D (XY, XZ, YZ) i un Grid 3D (grid*())
 //				- Dibuixar fons: blanc (FonsW) i negre (Fons)
@@ -15,32 +15,32 @@
 
 #include "stdafx.h"
 
-// Entorn V3D. QUATERNIONS: Include per a la definiciÛ del tipus GL_QUAT i crida a les funcions de quatern.
+// Entorn V3D. QUATERNIONS: Include per a la definici√≥ del tipus GL_QUAT i crida a les funcions de quatern.
 #include "quatern.h"
 
 #include "visualitzacio.h"
 #include "escena.h"
 
-// IluminaciÛ: Configurar iluminaciÛ de l'escena
+// Iluminaci√≥: Configurar iluminaci√≥ de l'escena
 void Iluminacio(GLint sh_programID, char ilumin, bool ifix, bool ilu2sides, bool ll_amb, LLUM* lumin, char obj, bool frnt_fcs,
 	bool bc_lin, int step)
 {
 
-// Variables per a configurar par‡metres de les fonts de llum
+// Variables per a configurar par√†metres de les fonts de llum
 	GLfloat especular[] = { 0.0,0.0,0.0,1.0 };
 	GLfloat ambientg[] = { .5,.5,.5,1.0 };
 
-// DefiniciÛ de llum ambient segons booleana ll_amb
+// Definici√≥ de llum ambient segons booleana ll_amb
 //	if (ll_amb) glLightModelfv(GL_LIGHT_MODEL_AMBIENT,ambientg);	// Codi OpenGL 1.1
 //		else glLightModelfv(GL_LIGHT_MODEL_AMBIENT,especular);		// Codi OpenGL 1.1
 	if (ll_amb) glUniform4f(glGetUniformLocation(sh_programID, "LightModelAmbient"), ambientg[0], ambientg[1], ambientg[2], ambientg[3]);
 	else glUniform4f(glGetUniformLocation(sh_programID, "LightModelAmbient"), especular[0], especular[1], especular[2], especular[3]);
 
-// Passar llum fixe a Coordenades MÛn o llum lligada a c‡mera
+// Passar llum fixe a Coordenades M√≥n o llum lligada a c√†mera
 	glUniform1i(glGetUniformLocation(sh_programID, "fixedLight"), ifix);
 
 // ---------------- LLUM #0 - (+Z)
-// PosiciÛ de la font de llum:
+// Posici√≥ de la font de llum:
 	//	glLightfv(GL_LIGHT0, GL_POSITION, position);	// Codi OpenGL 1.1
 	glUniform4f(glGetUniformLocation(sh_programID, "LightSource[0].position"), lumin[0].posicio.x, lumin[0].posicio.y, lumin[0].posicio.z, lumin[0].posicio.w);
 
@@ -50,13 +50,13 @@ void Iluminacio(GLint sh_programID, char ilumin, bool ifix, bool ilu2sides, bool
 	//	glLightfv(GL_LIGHT0, GL_SPECULAR, lumin[0].especular);	// Codi OpenGL 1.1
 	glUniform4f(glGetUniformLocation(sh_programID, "LightSource[0].specular"), lumin[0].especular.r, lumin[0].especular.g, lumin[0].especular.b, lumin[0].especular.a);
 
-// Coeficients factor atenuaciÛ f_att=1/(ad2+bd+c):
+// Coeficients factor atenuaci√≥ f_att=1/(ad2+bd+c):
 	//	glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, lumin[0].atenuacio.c);		// Codi OpenGL 1.1
 	//	glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, lumin[0].atenuacio.b);		// Codi OpenGL 1.1
 	//	glLightf(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, lumin[0].atenuacio.a);	// Codi OpenGL 1.1
 	glUniform3f(glGetUniformLocation(sh_programID, "LightSource[0].attenuation"), lumin[0].atenuacio.a, lumin[0].atenuacio.b, lumin[0].atenuacio.c);
 
-// Par‡metres font de llum restringida:
+// Par√†metres font de llum restringida:
 	//	if (lumin[0].restringida) {	glLightfv(GL_LIGHT0, GL_SPOT_DIRECTION, lumin[0].spotdirection);	// Codi OpenGL 1.1
 	//								glLightf(GL_LIGHT0, GL_SPOT_CUTOFF, lumin[0].spotcutoff);			// Codi OpenGL 1.1
 	//								glLightf(GL_LIGHT0, GL_SPOT_EXPONENT, lumin[0].spotexponent);		// Codi OpenGL 1.1
@@ -66,12 +66,12 @@ void Iluminacio(GLint sh_programID, char ilumin, bool ifix, bool ilu2sides, bool
 	glUniform1f(glGetUniformLocation(sh_programID, "LightSource[0].spotCosCutoff"), lumin[0].spotcoscutoff);
 	glUniform1f(glGetUniformLocation(sh_programID, "LightSource[0].spotExponent"), lumin[0].spotexponent);
 
-// ActivaciÛ - DesactivaciÛ font de llum:
+// Activaci√≥ - Desactivaci√≥ font de llum:
 	//	glEnable(GL_LIGHT0);	//	else glDisable(GL_LIGHT0);	// Codi OpenGL 1.1
 	glUniform1i(glGetUniformLocation(sh_programID, "LightSource[0].sw_light"), lumin[0].encesa);
 
 // ---------------- LLUM #1 (+X)
-// PosiciÛ de la font de llum:
+// Posici√≥ de la font de llum:
 	//glLightfv(GL_LIGHT1, GL_POSITION, position);	// Codi OpenGL 1.1
 	glUniform4f(glGetUniformLocation(sh_programID, "LightSource[1].position"), lumin[1].posicio.x, lumin[1].posicio.y, lumin[1].posicio.z, lumin[1].posicio.w);
 
@@ -81,13 +81,13 @@ void Iluminacio(GLint sh_programID, char ilumin, bool ifix, bool ilu2sides, bool
 	//	glLightfv(GL_LIGHT1, GL_SPECULAR, lumin[1].especular);	// Codi OpenGL 1.1
 	glUniform4f(glGetUniformLocation(sh_programID, "LightSource[1].specular"), lumin[1].especular.r, lumin[1].especular.g, lumin[1].especular.b, lumin[1].especular.a);
 
-// Coeficients factor atenuaciÛ f_att=1/(ad2+bd+c):
+// Coeficients factor atenuaci√≥ f_att=1/(ad2+bd+c):
 	//	glLightf(GL_LIGHT1, GL_CONSTANT_ATTENUATION, lumin[1].atenuacio.c);		// Codi OpenGL 1.1
 	//	glLightf(GL_LIGHT1, GL_LINEAR_ATTENUATION, lumin[1].atenuacio.b);		// Codi OpenGL 1.1
 	//	glLightf(GL_LIGHT1, GL_QUADRATIC_ATTENUATION, lumin[1].atenuacio.a);	// Codi OpenGL 1.1
 	glUniform3f(glGetUniformLocation(sh_programID, "LightSource[1].attenuation"), lumin[1].atenuacio.a, lumin[1].atenuacio.b, lumin[1].atenuacio.c);
 
-// Par‡metres font de llum restringida:
+// Par√†metres font de llum restringida:
 	//	if (lumin[1].restringida) {	glLightfv(GL_LIGHT1, GL_SPOT_DIRECTION, lumin[1].spotdirection);	// Codi OpenGL 1.1
 	//								glLightf(GL_LIGHT1, GL_SPOT_CUTOFF, lumin[1].spotcutoff);			// Codi OpenGL 1.1
 	//								glLightf(GL_LIGHT1, GL_SPOT_EXPONENT, lumin[1].spotexponent);		// Codi OpenGL 1.1
@@ -97,12 +97,12 @@ void Iluminacio(GLint sh_programID, char ilumin, bool ifix, bool ilu2sides, bool
 	glUniform1f(glGetUniformLocation(sh_programID, "LightSource[1].spotCosCutoff"), lumin[1].spotcoscutoff);
 	glUniform1f(glGetUniformLocation(sh_programID, "LightSource[1].SpotExponent"), lumin[1].spotexponent);
 
-// ActivaciÛ - DesactivaciÛ font de llum:
+// Activaci√≥ - Desactivaci√≥ font de llum:
 	//	glEnable(GL_LIGHT1);	//	glDisable(GL_LIGHT1);	// Codi OpenGL 1.1
 	glUniform1i(glGetUniformLocation(sh_programID, "LightSource[1].sw_light"), lumin[1].encesa);
 
 // ---------------- LLUM #2 (+Y)
-// PosiciÛ de la font de llum:
+// Posici√≥ de la font de llum:
 	//	glLightfv(GL_LIGHT2, GL_POSITION, position);
 	glUniform4f(glGetUniformLocation(sh_programID, "LightSource[2].position"), lumin[2].posicio.x, lumin[2].posicio.y, lumin[2].posicio.z, lumin[2].posicio.w);
 
@@ -112,13 +112,13 @@ void Iluminacio(GLint sh_programID, char ilumin, bool ifix, bool ilu2sides, bool
 	//	glLightfv(GL_LIGHT2, GL_SPECULAR, lumin[2].especular);	// Codi OpenGL 1.1
 	glUniform4f(glGetUniformLocation(sh_programID, "LightSource[2].specular"), lumin[2].especular.r, lumin[2].especular.g, lumin[2].especular.b, lumin[2].especular.a);
 
-// Coeficients factor atenuaciÛ f_att=1/(ad2+bd+c):
+// Coeficients factor atenuaci√≥ f_att=1/(ad2+bd+c):
 	//	glLightf(GL_LIGHT2, GL_CONSTANT_ATTENUATION, lumin[2].atenuacio.c);		// Codi OpenGL 1.1
 	//	glLightf(GL_LIGHT2, GL_LINEAR_ATTENUATION, lumin[2].atenuacio.b);		// Codi OpenGL 1.1
 	//	glLightf(GL_LIGHT2, GL_QUADRATIC_ATTENUATION, lumin[2].atenuacio.a);	// Codi OpenGL 1.1
 	glUniform3f(glGetUniformLocation(sh_programID, "LightSource[2].attenuation"), lumin[2].atenuacio.a, lumin[2].atenuacio.b, lumin[2].atenuacio.c);
 
-// Par‡metres font de llum restringida:
+// Par√†metres font de llum restringida:
 	//	if (lumin[2].restringida) {	glLightfv(GL_LIGHT2, GL_SPOT_DIRECTION, lumin[2].spotdirection);	// Codi OpenGL 1.1
 	//								glLightf(GL_LIGHT2, GL_SPOT_CUTOFF, lumin[2].spotcutoff);			// Codi OpenGL 1.1
 	//								glLightf(GL_LIGHT2, GL_SPOT_EXPONENT, lumin[2].spotexponent);		// Codi OpenGL 1.1
@@ -128,12 +128,12 @@ void Iluminacio(GLint sh_programID, char ilumin, bool ifix, bool ilu2sides, bool
 	glUniform1f(glGetUniformLocation(sh_programID, "LightSource[2].spotCosCutoff"), lumin[2].spotcoscutoff);
 	glUniform1f(glGetUniformLocation(sh_programID, "LightSource[2].spotExponent"), lumin[2].spotexponent);
 
-// ActivaciÛ - DesactivaciÛ font de llum:
+// Activaci√≥ - Desactivaci√≥ font de llum:
 	//	glEnable(GL_LIGHT2);	//	glDisable(GL_LIGHT2);	// Codi OpenGL 1.1
 	glUniform1i(glGetUniformLocation(sh_programID, "LightSource[2].sw_light"), lumin[2].encesa);
 
 // ---------------- Llum #3 (Z=Y=X)
-// PosiciÛ de la font de llum:
+// Posici√≥ de la font de llum:
 	//glLightfv(GL_LIGHT3, GL_POSITION, position);	// Codi OpenGL 1.1
 	glUniform4f(glGetUniformLocation(sh_programID, "LightSource[3].position"), lumin[3].posicio.x, lumin[3].posicio.y, lumin[3].posicio.z, lumin[3].posicio.w);
 
@@ -143,13 +143,13 @@ void Iluminacio(GLint sh_programID, char ilumin, bool ifix, bool ilu2sides, bool
 	//	glLightfv(GL_LIGHT3, GL_SPECULAR, lumin[3].especular);	// Codi OpenGL 1.1
 	glUniform4f(glGetUniformLocation(sh_programID, "LightSource[3].specular"), lumin[3].especular.r, lumin[3].especular.g, lumin[3].especular.b, lumin[3].especular.a);
 
-// Coeficients factor atenuaciÛ f_att=1/(ad2+bd+c):
+// Coeficients factor atenuaci√≥ f_att=1/(ad2+bd+c):
 	//	glLightf(GL_LIGHT3, GL_CONSTANT_ATTENUATION, lumin[3].atenuacio.c);		// Codi OpenGL 1.1
 	//	glLightf(GL_LIGHT3, GL_LINEAR_ATTENUATION, lumin[3].atenuacio.b);		// Codi OpenGL 1.1	
 	//	glLightf(GL_LIGHT3, GL_QUADRATIC_ATTENUATION, lumin[3].atenuacio.a);	// Codi OpenGL 1.1
 	glUniform3f(glGetUniformLocation(sh_programID, "LightSource[3].attenuation"), lumin[3].atenuacio.a, lumin[3].atenuacio.b, lumin[3].atenuacio.c);
 
-// Par‡metres font de llum restringida:
+// Par√†metres font de llum restringida:
 	//	if (lumin[3].restringida) {	glLightfv(GL_LIGHT3, GL_SPOT_DIRECTION, lumin[3].spotdirection);	// Codi OpenGL 1.1
 	//								glLightf(GL_LIGHT3, GL_SPOT_CUTOFF, lumin[3].spotcutoff);			// Codi OpenGL 1.1
 	//								glLightf(GL_LIGHT3, GL_SPOT_EXPONENT, lumin[3].spotexponent);		// Codi OpenGL 1.1
@@ -159,12 +159,12 @@ void Iluminacio(GLint sh_programID, char ilumin, bool ifix, bool ilu2sides, bool
 	glUniform1f(glGetUniformLocation(sh_programID, "LightSource[3].spotCosCutoff"), lumin[3].spotcoscutoff);
 	glUniform1f(glGetUniformLocation(sh_programID, "LightSource[3].spotExponent"), lumin[3].spotexponent);
 
-// ActivaciÛ - DesactivaciÛ font de llum:
+// Activaci√≥ - Desactivaci√≥ font de llum:
 	//	glEnable(GL_LIGHT3);	// glDisable(GL_LIGHT3);	// Codi OpenGL 1.1
 	glUniform1i(glGetUniformLocation(sh_programID, "LightSource[3].sw_light"), lumin[3].encesa);
 
 // ---------------- LLUM #4 (-Z)
-// PosiciÛ de la font de llum:
+// Posici√≥ de la font de llum:
 	//glLightfv(GL_LIGHT4, GL_POSITION, position);	// Codi OpenGL 1.1
 	glUniform4f(glGetUniformLocation(sh_programID, "LightSource[4].position"), lumin[4].posicio.x, lumin[4].posicio.y, lumin[4].posicio.z, lumin[4].posicio.w);
 
@@ -174,13 +174,13 @@ void Iluminacio(GLint sh_programID, char ilumin, bool ifix, bool ilu2sides, bool
 	//	glLightfv(GL_LIGHT4, GL_SPECULAR, lumin[4].especular);	// Codi OpenGL 1.1
 	glUniform4f(glGetUniformLocation(sh_programID, "LightSource[4].specular"), lumin[4].especular.r, lumin[4].especular.g, lumin[4].especular.b, lumin[4].especular.a);
 
-// Coeficients factor atenuaciÛ f_att=1/(ad2+bd+c):
+// Coeficients factor atenuaci√≥ f_att=1/(ad2+bd+c):
 	//	glLightf(GL_LIGHT4, GL_CONSTANT_ATTENUATION, lumin[4].atenuacio.c);		// Codi OpenGL 1.1
 	//	glLightf(GL_LIGHT4, GL_LINEAR_ATTENUATION, lumin[4].atenuacio.b);		// Codi OpenGL 1.1
 	//	glLightf(GL_LIGHT4, GL_QUADRATIC_ATTENUATION, lumin[4].atenuacio.a);	// Codi OpenGL 1.1
 	glUniform3f(glGetUniformLocation(sh_programID, "LightSource[4].attenuation"), lumin[4].atenuacio.a, lumin[4].atenuacio.b, lumin[4].atenuacio.c);
 
-// Par‡metres font de llum restringida:
+// Par√†metres font de llum restringida:
 	//	if (lumin[4].restringida) {	glLightfv(GL_LIGHT4, GL_SPOT_DIRECTION, lumin[4].spotdirection);	// Codi OpenGL 1.1
 	//								glLightf(GL_LIGHT4, GL_SPOT_CUTOFF, lumin[4].spotcutoff);			// Codi OpenGL 1.1
 	//								glLightf(GL_LIGHT4, GL_SPOT_EXPONENT, lumin[4].spotexponent);		// Codi OpenGL 1.1
@@ -190,12 +190,12 @@ void Iluminacio(GLint sh_programID, char ilumin, bool ifix, bool ilu2sides, bool
 	glUniform1f(glGetUniformLocation(sh_programID, "LightSource[4].spotCosCutoff"), lumin[4].spotcoscutoff);
 	glUniform1f(glGetUniformLocation(sh_programID, "LightSource[4].spotExponent"), lumin[4].spotexponent);
 
-// ActivaciÛ - DesactivaciÛ font de llum:
+// Activaci√≥ - Desactivaci√≥ font de llum:
 	//	glEnable(GL_LIGHT4);	//	else glDisable(GL_LIGHT4);	// Codi OpenGL 1.1
 	glUniform1i(glGetUniformLocation(sh_programID, "LightSource[4].sw_light"), lumin[4].encesa);
 
 // ---------------- LLUM #5
-// PosiciÛ de la font de llum :
+// Posici√≥ de la font de llum :
 	//glLightfv(GL_LIGHT5, GL_POSITION, position);	// Codi OpenGL 1.1
 	glUniform4f(glGetUniformLocation(sh_programID, "LightSource[5].position"), lumin[5].posicio.x, lumin[5].posicio.y, lumin[5].posicio.z, lumin[5].posicio.w);
 
@@ -205,13 +205,13 @@ void Iluminacio(GLint sh_programID, char ilumin, bool ifix, bool ilu2sides, bool
 	//	glLightfv(GL_LIGHT5, GL_SPECULAR, lumin[5].especular);	// Codi OpenGL 1.1
 	glUniform4f(glGetUniformLocation(sh_programID, "LightSource[5].specular"), lumin[5].especular.r, lumin[5].especular.g, lumin[5].especular.b, lumin[5].especular.a);
 
-// Coeficients factor atenuaciÛ f_att=1/(ad2+bd+c)
+// Coeficients factor atenuaci√≥ f_att=1/(ad2+bd+c)
 	//	glLightf(GL_LIGHT5, GL_CONSTANT_ATTENUATION, lumin[5].atenuacio.c);		// Codi OpenGL 1.1
 	//	glLightf(GL_LIGHT5, GL_LINEAR_ATTENUATION, lumin[5].atenuacio.b);		// Codi OpenGL 1.1
 	//	glLightf(GL_LIGHT5, GL_QUADRATIC_ATTENUATION, lumin[5].atenuacio.a);	// Codi OpenGL 1.1
 	glUniform3f(glGetUniformLocation(sh_programID, "LightSource[5].attenuation"), lumin[5].atenuacio.a, lumin[5].atenuacio.b, lumin[5].atenuacio.c);
 
-// Par‡metres font de llum restringida:
+// Par√†metres font de llum restringida:
 	//	if (lumin[5].restringida) {	glLightfv(GL_LIGHT5, GL_SPOT_DIRECTION, lumin[5].spotdirection);	// Codi OpenGL 1.1
 	//								glLightf(GL_LIGHT5, GL_SPOT_CUTOFF, lumin[5].spotcoscutoff);		// Codi OpenGL 1.1
 	//								glLightf(GL_LIGHT5, GL_SPOT_EXPONENT, lumin[5].spotexponent);		// Codi OpenGL 1.1
@@ -221,12 +221,12 @@ void Iluminacio(GLint sh_programID, char ilumin, bool ifix, bool ilu2sides, bool
 	glUniform1f(glGetUniformLocation(sh_programID, "LightSource[5].spotCosCutoff"), lumin[5].spotcoscutoff);
 	glUniform1f(glGetUniformLocation(sh_programID, "LightSource[5].spotExponent"), lumin[5].spotexponent);
 
-// ActivaciÛ - DesactivaciÛ font de llum:
+// Activaci√≥ - Desactivaci√≥ font de llum:
 	//	glEnable(GL_LIGHT5);	//	else glDisable(GL_LIGHT5);	// Codi OpenGL 1.1
 	glUniform1i(glGetUniformLocation(sh_programID, "LightSource[5].sw_light"), lumin[5].encesa);
 
 // ---------------- LLUM #6 
-// PosiciÛ de la font de llum:
+// Posici√≥ de la font de llum:
 	//	glLightfv(GL_LIGHT6, GL_POSITION, position);	// Codi OpenGL 1.1
 	glUniform4f(glGetUniformLocation(sh_programID, "LightSource[6].position"), lumin[6].posicio.x, lumin[6].posicio.y, lumin[6].posicio.z, lumin[6].posicio.w);
 
@@ -236,13 +236,13 @@ void Iluminacio(GLint sh_programID, char ilumin, bool ifix, bool ilu2sides, bool
 	//	glLightfv(GL_LIGHT6, GL_SPECULAR, lumin[6].especular);	// Codi OpenGL 1.1
 	glUniform4f(glGetUniformLocation(sh_programID, "LightSource[6].specular"), lumin[6].especular.r, lumin[6].especular.g, lumin[6].especular.b, lumin[6].especular.a);
 
-// Coeficients factor atenuaciÛ f_att=1/(ad2+bd+c):
+// Coeficients factor atenuaci√≥ f_att=1/(ad2+bd+c):
 	//	glLightf(GL_LIGHT6, GL_CONSTANT_ATTENUATION, lumin[6].atenuacio.c);		// Codi OpenGL 1.1
 	//	glLightf(GL_LIGHT6, GL_LINEAR_ATTENUATION, lumin[6].atenuacio.b);		// Codi OpenGL 1.1
 	//	glLightf(GL_LIGHT6, GL_QUADRATIC_ATTENUATION, lumin[6].atenuacio.a);	// Codi OpenGL 1.1
 	glUniform3f(glGetUniformLocation(sh_programID, "LightSource[6].attenuation"), lumin[6].atenuacio.a, lumin[6].atenuacio.b, lumin[6].atenuacio.c);
 
-// Par‡metres font de llum restringida:
+// Par√†metres font de llum restringida:
 	//	if (lumin[6].restringida) {	glLightfv(GL_LIGHT6, GL_SPOT_DIRECTION, lumin[6].spotdirection);	// Codi OpenGL 1.1
 	//								glLightf(GL_LIGHT6, GL_SPOT_CUTOFF, lumin[6].cutoff);				// Codi OpenGL 1.1
 	//								glLightf(GL_LIGHT6, GL_SPOT_EXPONENT, lumin[6].exponent);			// Codi OpenGL 1.1
@@ -252,12 +252,12 @@ void Iluminacio(GLint sh_programID, char ilumin, bool ifix, bool ilu2sides, bool
 	glUniform1f(glGetUniformLocation(sh_programID, "LightSource[6].spotCosCutoff"), lumin[6].spotcoscutoff);
 	glUniform1f(glGetUniformLocation(sh_programID, "LightSource[6].spotExponent"), lumin[6].spotexponent);
 
-// ActivaciÛ - DesactivaciÛ font de llum:
+// Activaci√≥ - Desactivaci√≥ font de llum:
 	// glEnable(GL_LIGHT6)	//	glDisable(GL_LIGHT6);
 	glUniform1i(glGetUniformLocation(sh_programID, "LightSource[6].sw_light"), lumin[6].encesa);
 
 // ---------------- LLUM #7 
-// PosiciÛ de la font de llum:
+// Posici√≥ de la font de llum:
 	//glLightfv(GL_LIGHT7, GL_POSITION, position);	// Codi OpenGL 1.1
 	glUniform4f(glGetUniformLocation(sh_programID, "LightSource[7].position"), lumin[7].posicio.x, lumin[7].posicio.y, lumin[7].posicio.z, lumin[7].posicio.w);
 
@@ -267,13 +267,13 @@ void Iluminacio(GLint sh_programID, char ilumin, bool ifix, bool ilu2sides, bool
 	//	glLightfv(GL_LIGHT7, GL_SPECULAR, lumin[7].especular);	// Codi OpenGL 1.1
 	glUniform4f(glGetUniformLocation(sh_programID, "LightSource[7].specular"), lumin[7].especular.r, lumin[7].especular.g, lumin[7].especular.b, lumin[7].especular.a);
 
-// Coeficients factor atenuaciÛ f_att=1/(ad2+bd+c):
+// Coeficients factor atenuaci√≥ f_att=1/(ad2+bd+c):
 	//	glLightf(GL_LIGHT7, GL_CONSTANT_ATTENUATION, lumin[7].atenuacio.c);		// Codi OpenGL 1.1
 	//	glLightf(GL_LIGHT7, GL_LINEAR_ATTENUATION, lumin[7].atenuacio.b);		// Codi OpenGL 1.1
 	//	glLightf(GL_LIGHT7, GL_QUADRATIC_ATTENUATION, lumin[7].atenuacio.a);	// Codi OpenGL 1.1
 	glUniform3f(glGetUniformLocation(sh_programID, "LightSource[7].attenuation"), lumin[7].atenuacio.a, lumin[7].atenuacio.b, lumin[7].atenuacio.c);
 
-// Par‡metres font de llum restringida:
+// Par√†metres font de llum restringida:
 	//	if (lumin[7].restringida) {	glLightfv(GL_LIGHT7, GL_SPOT_DIRECTION, lumin[7].spotdirection);	// Codi OpenGL 1.1
 	//								glLightf(GL_LIGHT7, GL_SPOT_CUTOFF, lumin[7].cutoff);				// Codi OpenGL 1.1
 	//								glLightf(GL_LIGHt7, GL_SPOT_EXPONENT, lumin[7].exponent);			// Codi OpenGL 1.1
@@ -283,11 +283,11 @@ void Iluminacio(GLint sh_programID, char ilumin, bool ifix, bool ilu2sides, bool
 	glUniform1f(glGetUniformLocation(sh_programID, "LightSource[7].spotCosCutoff"), lumin[7].spotcoscutoff);
 	glUniform1f(glGetUniformLocation(sh_programID, "LightSource[7].spotExponent"), lumin[7].spotexponent);
 
-// ActivaciÛ - DesactivaciÛ font de llum:
+// Activaci√≥ - Desactivaci√≥ font de llum:
 	//	glEnable(GL_LIGHT7);	//	glDisable(GL_LIGHT7);	// Codi OpenGL 1.1
 	glUniform1i(glGetUniformLocation(sh_programID, "LightSource[7].sw_light"), lumin[7].encesa);
 
-// SelecciÛ del model d'iluminaciÛ segons variable ilumin
+// Selecci√≥ del model d'iluminaci√≥ segons variable ilumin
 	switch(ilumin)
 	{
 	case PUNTS:
@@ -300,37 +300,37 @@ void Iluminacio(GLint sh_programID, char ilumin, bool ifix, bool ilu2sides, bool
 
     case PLANA:
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-		// PR¿CTICA FRACTAL: Crida a la funciÛ pel c‡lcul dels vectors normals normals a les cares si l'objecte Ès un fractal
+		// PR√ÄCTICA FRACTAL: Crida a la funci√≥ pel c√†lcul dels vectors normals normals a les cares si l'objecte √©s un fractal
    
-		// Il.luminaciÛ per cares planes
+		// Il.luminaci√≥ per cares planes
 		glShadeModel(GL_FLAT); 
 		break;
 
 	case SUAU:
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-		// PR¿CTICA FRACTAL: Crida a la funciÛ pel c‡lcul dels vectors normals normals a les cares si l'objecte Ès un fractal
+		// PR√ÄCTICA FRACTAL: Crida a la funci√≥ pel c√†lcul dels vectors normals normals a les cares si l'objecte √©s un fractal
 
-		// Il.luminaciÛ suau 
+		// Il.luminaci√≥ suau 
 		glShadeModel(GL_SMOOTH);
 		break;
 	}
 }
 
 
-// -------- Entorn VGI: ORTOGR¿FICA (Funcions Projeccio_Orto i Vista_Ortografica)
+// -------- Entorn VGI: ORTOGR√ÄFICA (Funcions Projeccio_Orto i Vista_Ortografica)
 
-// Projeccio_Orto: DefiniciÛ Viewport i glOrtho 
-// ---- Entorn VGI: ATENCI”!!. CAL DEFINIR PAR¿METRES DE LA FUNCI”
+// Projeccio_Orto: Definici√≥ Viewport i glOrtho 
+// ---- Entorn VGI: ATENCI√ì!!. CAL DEFINIR PAR√ÄMETRES DE LA FUNCI√ì
 glm::mat4 Projeccio_Orto()
 {   
 	glm::dmat4 MatriuProjeccio(1.0);
-// ---- Entorn VGI: ATENCI”!!. ESPECIFICACIO FUNCIONS PER A DEFINIR VIEWPORT i PROJECCIO ORTOGR¿FICA
-//			        AMB ELS SEUS PAR¿METRES. CONTINGUT SEMBLANT A FUNCI” Projeccio_Perspectiva().
+// ---- Entorn VGI: ATENCI√ì!!. ESPECIFICACIO FUNCIONS PER A DEFINIR VIEWPORT i PROJECCIO ORTOGR√ÄFICA
+//			        AMB ELS SEUS PAR√ÄMETRES. CONTINGUT SEMBLANT A FUNCI√ì Projeccio_Perspectiva().
 	return MatriuProjeccio;
 }
 
-// Vista_Ortogr‡fica: Ilumina i dibuixa l'escena. Crida a la funciÛ gluLookAt segons la variable prj 
-//				(planta, alÁat, perfil o axonometrica).
+// Vista_Ortogr√†fica: Ilumina i dibuixa l'escena. Crida a la funci√≥ gluLookAt segons la variable prj 
+//				(planta, al√ßat, perfil o axonometrica).
 glm::mat4 Vista_Ortografica(GLuint sh_programID, int prj,GLdouble Raux,CColor col_fons,CColor col_object,char objecte,GLdouble mida,int step,
 				bool frnt_fcs, bool oculta, bool testv, bool bck_ln, 
 				char iluminacio, bool llum_amb, LLUM* lumi, bool ifix, bool il2sides, 
@@ -341,10 +341,10 @@ glm::mat4 Vista_Ortografica(GLuint sh_programID, int prj,GLdouble Raux,CColor co
 // Iluminacio movent-se amb la camara (abans gluLookAt)
 	if (!ifix) Iluminacio(sh_programID, iluminacio, ifix, il2sides, llum_amb, lumi, objecte, frnt_fcs, bck_ln, step);
 
-// ImplementaciÛ de planta,alÁat,perfil i isomËtrica 
-// ---- Entorn VGI: ATENCI”!!. ESPECIFICACIO DE LA C¿MERA
-//								Cal definir la c‡mera (glm::lookAt() ) en funciÛ del
-//								tipus de projecciÛ definit a la variable prj.
+// Implementaci√≥ de planta,al√ßat,perfil i isom√®trica 
+// ---- Entorn VGI: ATENCI√ì!!. ESPECIFICACIO DE LA C√ÄMERA
+//								Cal definir la c√†mera (glm::lookAt() ) en funci√≥ del
+//								tipus de projecci√≥ definit a la variable prj.
 
 // Pas Matriu a shader
 	glUniformMatrix4fv(glGetUniformLocation(sh_programID, "viewMatrix"), 1, GL_FALSE, &MatriuVista[0][0]);
@@ -352,7 +352,7 @@ glm::mat4 Vista_Ortografica(GLuint sh_programID, int prj,GLdouble Raux,CColor co
 // Neteja dels buffers de color i profunditat
 	Fons(col_fons);
 
-// Iluminacio fixe respecte la camara (desprÈs gluLookAt)
+// Iluminacio fixe respecte la camara (despr√©s gluLookAt)
 	if (ifix) Iluminacio(sh_programID, iluminacio, ifix, il2sides, llum_amb, lumi, objecte, frnt_fcs, bck_ln, step);
 
 // Test de Visibilitat
@@ -363,7 +363,7 @@ glm::mat4 Vista_Ortografica(GLuint sh_programID, int prj,GLdouble Raux,CColor co
 	if (oculta) glEnable(GL_DEPTH_TEST);
 		else glDisable(GL_DEPTH_TEST);
 
-// Dibuix de les cares back com a lÌnies en Il.luminacio PLANA i SUAU
+// Dibuix de les cares back com a l√≠nies en Il.luminacio PLANA i SUAU
 	if (bck_ln) glPolygonMode(GL_BACK, GL_LINE);
 	
 	return MatriuVista;
@@ -371,16 +371,16 @@ glm::mat4 Vista_Ortografica(GLuint sh_programID, int prj,GLdouble Raux,CColor co
 
 // -------- Entorn VGI: PERSPECTIVA (Funcions Projeccio_Perspectiva i Vista_Esferica)
 
-// Projeccio_Perspectiva: DefiniciÛ Viewport i gluPerspective
+// Projeccio_Perspectiva: Definici√≥ Viewport i gluPerspective
 glm::mat4 Projeccio_Perspectiva(GLuint sh_programID, int minx,int miny,GLsizei w,GLsizei h,double zoom)
 {
 	glm::mat4 MatriuProjeccio(1.0);
 
-// DefiniciÛ Viewport
+// Definici√≥ Viewport
 	glViewport(minx,miny,w,h);
 	if (h==0) h=1;
 
-// PROJECCIO PERSPECTIVA.Definim volum de visualitzaciÛ adaptant-lo 
+// PROJECCIO PERSPECTIVA.Definim volum de visualitzaci√≥ adaptant-lo 
 //							a les mides actuals de la finestra windows. Amb glm::perspective()
 	if (w >= h) MatriuProjeccio = glm::perspective(glm::radians(60.0), 1.0 * w / h, p_near, p_far);
 		else MatriuProjeccio = glm::perspective(glm::radians(60.0), 1.0 * w / h, p_near, p_far);
@@ -391,7 +391,7 @@ glm::mat4 Projeccio_Perspectiva(GLuint sh_programID, int minx,int miny,GLsizei w
 	return MatriuProjeccio;
 }
 
-// Vista_Esferica: DefiniciÛ gluLookAt amb possibilitat de moure el punt de vista interactivament amb el ratolÌ, 
+// Vista_Esferica: Definici√≥ gluLookAt amb possibilitat de moure el punt de vista interactivament amb el ratol√≠, 
 //					ilumina i dibuixa l'escena
 glm::mat4 Vista_Esferica(GLuint sh_programID,CEsfe3D opv,char VPol,bool pant,CPunt3D tr,CPunt3D trF,
 				 CColor col_fons,CColor col_object,char objecte,double mida,int step, 
@@ -401,19 +401,19 @@ glm::mat4 Vista_Esferica(GLuint sh_programID,CEsfe3D opv,char VPol,bool pant,CPu
 {
 	GLdouble cam[3] = { 0.0,0.0,0.0 }, up[3] = { 0.0,0.0,0.0 };
 	glm::mat4 MatriuVista(1.0);
-	glm::mat4 TransMatrix(1.0);	// Matrius TraslaciÛ
+	glm::mat4 TransMatrix(1.0);	// Matrius Traslaci√≥
 
-// Rectificar par‡metre R si negatiu.
+// Rectificar par√†metre R si negatiu.
 	if (opv.R < 1.0) opv.R = 1.0;
 
-// ConversiÛ angles radians -> graus
+// Conversi√≥ angles radians -> graus
 	opv.alfa=opv.alfa*PI/180;
 	opv.beta=opv.beta*PI/180;
 
 // Neteja dels buffers de color i profunditat
 	Fons(col_fons);
 
-// PosiciÛ c‡mera i vector cap amunt
+// Posici√≥ c√†mera i vector cap amunt
 	if (VPol==POLARZ) { cam[0]=opv.R*cos(opv.beta)*cos(opv.alfa);
 						cam[1]=opv.R*sin(opv.beta)*cos(opv.alfa);
 						cam[2]=opv.R*sin(opv.alfa);		
@@ -436,11 +436,11 @@ glm::mat4 Vista_Esferica(GLuint sh_programID,CEsfe3D opv,char VPol,bool pant,CPu
 // Iluminacio movent-se amb la camara (abans glLookAt)
 	if (!ifix) Iluminacio(sh_programID,iluminacio, ifix, il2sides, llum_amb, lumi, objecte, frnt_fcs, bck_ln, step);
 
-// OpciÛ pan: desplaÁament del Centre de l'esfera (pant=1)
+// Opci√≥ pan: despla√ßament del Centre de l'esfera (pant=1)
 	if (pant) TransMatrix = glm::translate(TransMatrix, vec3(tr.x, tr.y, tr.z));	//glTranslatef(tr.x, tr.y, tr.z);
-	TransMatrix = glm::translate(TransMatrix, vec3(trF.x, trF.y, trF.z));	// TraslaciÛ fixada amb la INSERT dins l'opciÛ pan
+	TransMatrix = glm::translate(TransMatrix, vec3(trF.x, trF.y, trF.z));	// Traslaci√≥ fixada amb la INSERT dins l'opci√≥ pan
 
-// EspecificaciÛ del punt de vista
+// Especificaci√≥ del punt de vista
    //gluLookAt(cam[0],cam[1],cam[2],0.,0.,0.,up[0],up[1],up[2]);
    MatriuVista = glm::lookAt(
 	   glm::vec3(cam[0], cam[1], cam[2]),	// Camera is here
@@ -448,7 +448,7 @@ glm::mat4 Vista_Esferica(GLuint sh_programID,CEsfe3D opv,char VPol,bool pant,CPu
 	   glm::vec3(up[0], up[1], up[2])		// Head is up (set to 0,-1,0 to look upside-down)
 	   );
 
-// Concatenar matrius TraslaciÛ amb la de c‡mera per al pan
+// Concatenar matrius Traslaci√≥ amb la de c√†mera per al pan
 	MatriuVista = TransMatrix * MatriuVista;
 
 // Pas Matriu Vista a shader
@@ -457,7 +457,7 @@ glm::mat4 Vista_Esferica(GLuint sh_programID,CEsfe3D opv,char VPol,bool pant,CPu
    // Umbral blanc/negre para el shader (Obra Dinn)
    //pepe glUniform1f(glGetUniformLocation(sh_programID, "uThreshold"), 0.5f); 
 
-// Iluminacio fixe respecte la camara (desprÈs glLookAt)
+// Iluminacio fixe respecte la camara (despr√©s glLookAt)
    if (ifix) Iluminacio(sh_programID,iluminacio, ifix, il2sides, llum_amb, lumi, objecte, frnt_fcs, bck_ln, step);
    
 // Test de Visibilitat
@@ -472,7 +472,7 @@ glm::mat4 Vista_Esferica(GLuint sh_programID,CEsfe3D opv,char VPol,bool pant,CPu
 }
 
 
-//Vista_Navega: DefiniciÛ gluLookAt directament per par‡metre, sense esfËriques.
+//Vista_Navega: Definici√≥ gluLookAt directament per par√†metre, sense esf√®riques.
 //              amb possibilitat de moure el punt de vista interactivament amb les
 //				tecles de cursor per poder navegar.
 glm::mat4 Vista_Navega(GLuint sh_programID, CPunt3D pv, GLdouble n[3],GLdouble v[3],bool pant,CPunt3D tr,CPunt3D trF,
@@ -489,11 +489,11 @@ glm::mat4 Vista_Navega(GLuint sh_programID, CPunt3D pv, GLdouble n[3],GLdouble v
 // Iluminacio movent-se amb la camara (abans glLookAt)
 	if (!ifix) Iluminacio(sh_programID,iluminacio, ifix, il2sides, llum_amb, lumi, objecte, frnt_fcs, bck_ln, step);
 
-// OpciÛ pan: desplaÁament del Centre de l'esfera (pant=true)
+// Opci√≥ pan: despla√ßament del Centre de l'esfera (pant=true)
 	if (pant) TransMatrix = glm::translate(glm::mat4(), vec3(tr.x, tr.y, tr.z)); // glTranslatef(tr.x, tr.y, tr.z);
-	TransMatrix = glm::translate(TransMatrix, vec3(trF.x, trF.y, trF.z)); //glTranslatef(trF.x,trF.y,trF.z);	// TraslaciÛ fixada amb la INSERT dins l'opciÛ pan
+	TransMatrix = glm::translate(TransMatrix, vec3(trF.x, trF.y, trF.z)); //glTranslatef(trF.x,trF.y,trF.z);	// Traslaci√≥ fixada amb la INSERT dins l'opci√≥ pan
 
-// EspecificaciÛ del punt de vista (C¿MERA)
+// Especificaci√≥ del punt de vista (C√ÄMERA)
 	//gluLookAt(pv.x,pv.y,pv.z,n[0],n[1],n[2],v[0],v[1],v[2]);
 	MatriuVista = glm::lookAt(
 		glm::vec3(pv.x, pv.y, pv.z), // Camera is here
@@ -501,13 +501,13 @@ glm::mat4 Vista_Navega(GLuint sh_programID, CPunt3D pv, GLdouble n[3],GLdouble v
 		glm::vec3(v[0], v[1], v[2])  // Head is up (set to 0,-1,0 to look upside-down)
 		);
 
-// Concatenar matrius TraslaciÛ amb la de c‡mera per al pan
+// Concatenar matrius Traslaci√≥ amb la de c√†mera per al pan
 	MatriuVista = TransMatrix * MatriuVista;
 
 // Pas Matriu a shader
 	glUniformMatrix4fv(glGetUniformLocation(sh_programID, "viewMatrix"), 1, GL_FALSE, &MatriuVista[0][0]);
 
-// Iluminacio fixe respecte la camara (desprÈs glLookAt)
+// Iluminacio fixe respecte la camara (despr√©s glLookAt)
 	if (ifix) Iluminacio(sh_programID,iluminacio, ifix, il2sides, llum_amb, lumi, objecte, frnt_fcs, bck_ln, step);
 
 // Test de Visibilitat
@@ -522,9 +522,9 @@ glm::mat4 Vista_Navega(GLuint sh_programID, CPunt3D pv, GLdouble n[3],GLdouble v
 }
 
 
-//Vista_Geode: DefiniciÛ gluLookAt a partir de coordenades esfËriques, perÚ situant la c‡mera a l'origen (0,0,0)
+//Vista_Geode: Definici√≥ gluLookAt a partir de coordenades esf√®riques, per√≤ situant la c√†mera a l'origen (0,0,0)
 //              i colocant el punt on mira cap el punt (R,alfa,beta) amb la possibilitat de moure aquest darrer punt
-//				interactivament amb les	tecles de cursor per a veure una c˙pula.
+//				interactivament amb les	tecles de cursor per a veure una c√∫pula.
 glm::mat4 Vista_Geode(GLuint sh_programID, CEsfe3D opv, char VPol, bool pant, CPunt3D tr, CPunt3D trF,
 	CColor col_fons, CColor col_object, char objecte, double mida, int step,
 	bool frnt_fcs, bool oculta, bool testv, bool bck_ln,
@@ -533,19 +533,19 @@ glm::mat4 Vista_Geode(GLuint sh_programID, CEsfe3D opv, char VPol, bool pant, CP
 {
 	GLdouble cam[3] = {0.0, 0.0, 0.0}, camN[3] = { 0.0, 0.0, 0.0 }, up[3]{ 0.0, 0.0, 0.0 };
 	glm::mat4 MatriuVista(1.0);
-	glm::mat4 TransMatrix(1.0);	// Matrius TraslaciÛ
+	glm::mat4 TransMatrix(1.0);	// Matrius Traslaci√≥
 
-// Rectificar par‡metre R si negatiu.
+// Rectificar par√†metre R si negatiu.
 	if (opv.R < 1.0) opv.R = 1.0;
 
-// ConversiÛ angles radians -> graus
+// Conversi√≥ angles radians -> graus
 	opv.alfa = opv.alfa * PI / 180;
 	opv.beta = opv.beta * PI / 180;
 
 // Neteja dels buffers de color i profunditat
 	Fons(col_fons);
 
-	// PosiciÛ c‡mera i vector cap amunt en GEODE
+	// Posici√≥ c√†mera i vector cap amunt en GEODE
 	if (VPol == POLARZ) {
 		cam[0] = opv.R * cos(opv.beta) * cos(opv.alfa);
 		cam[1] = opv.R * sin(opv.beta) * cos(opv.alfa);
@@ -589,24 +589,24 @@ glm::mat4 Vista_Geode(GLuint sh_programID, CEsfe3D opv, char VPol, bool pant, CP
 // Iluminacio movent-se amb la camara (abans gluLookAt)
 	if (!ifix) Iluminacio(sh_programID, iluminacio, ifix, il2sides, llum_amb, lumi, objecte, frnt_fcs, bck_ln, step);
 
-// OpciÛ pan: desplaÁament del Centre de l'esfera (pant=1)
+// Opci√≥ pan: despla√ßament del Centre de l'esfera (pant=1)
 	if (pant) TransMatrix = glm::translate(TransMatrix, vec3(tr.x, tr.y, tr.z));	//glTranslatef(tr.x, tr.y, tr.z);
-	TransMatrix = glm::translate(TransMatrix, vec3(trF.x, trF.y, trF.z));	// TraslaciÛ fixada amb la INSERT dins l'opciÛ pan
+	TransMatrix = glm::translate(TransMatrix, vec3(trF.x, trF.y, trF.z));	// Traslaci√≥ fixada amb la INSERT dins l'opci√≥ pan
 
-// EspecificaciÛ de la c‡mera
+// Especificaci√≥ de la c√†mera
 	MatriuVista = glm::lookAt(
 		glm::vec3(cam[0], cam[1], cam[2]), // Camera is here
 		glm::vec3(cam[0] + camN[0], cam[1] + camN[1], cam[2] + camN[2]), // and looks here
 		glm::vec3(up[0], up[1], up[2])  // Head is up (set to 0,-1,0 to look upside-down)
 	);
 
-// Concatenar matrius TraslaciÛ amb la de c‡mera per al pan
+// Concatenar matrius Traslaci√≥ amb la de c√†mera per al pan
 	MatriuVista = TransMatrix * MatriuVista;
 
 // Pas Matriu Vista a shader
 	glUniformMatrix4fv(glGetUniformLocation(sh_programID, "viewMatrix"), 1, GL_FALSE, &MatriuVista[0][0]);
 
-// Iluminacio fixe respecte la camara (desprÈs gluLookAt)
+// Iluminacio fixe respecte la camara (despr√©s gluLookAt)
 	if (ifix) Iluminacio(sh_programID, iluminacio, ifix, il2sides, llum_amb, lumi, objecte, frnt_fcs, bck_ln, step);
 
 // Test de Visibilitat
@@ -620,13 +620,13 @@ glm::mat4 Vista_Geode(GLuint sh_programID, CEsfe3D opv, char VPol, bool pant, CP
 	return MatriuVista;
 }
 
-// instancia: Aplica Transformacions Geometriques d'instanciaciÛ, segons els parametres 
+// instancia: Aplica Transformacions Geometriques d'instanciaci√≥, segons els parametres 
 //            definits a la persiana Transformacions
 glm::mat4 instancia(bool TR, INSTANCIA tg, INSTANCIA tgF)
 {
 	glm::mat4 MatriuTG(1.0), MatriuT(1.0);
 
-// Transformacions geometriques sobre objecte (Traslacio, Rotacions i Escalatge) amb conversiÛ angles Euler.
+// Transformacions geometriques sobre objecte (Traslacio, Rotacions i Escalatge) amb conversi√≥ angles Euler.
 	if (TR) MatriuTG = glm::translate(MatriuTG, glm::vec3(tg.VTras.x, tg.VTras.y, tg.VTras.z));
 	MatriuTG = glm::translate(MatriuTG, glm::vec3(tgF.VTras.x, tgF.VTras.y, tgF.VTras.z));	// Traslacio fixada amb la INSERT dins l'opcio Transformacions
 
@@ -658,7 +658,7 @@ glm::mat4 instancia(bool TR, INSTANCIA tg, INSTANCIA tgF)
 }
 
 
-// deixos: CreaciÛ del VBO per al dibuix dels eixos coordenats
+// deixos: Creaci√≥ del VBO per al dibuix dels eixos coordenats
 GLuint deixos()
 {
 	GLuint vaoId = 0;	// VAO Index
@@ -690,7 +690,7 @@ GLuint deixos()
 	glBindVertexArray(vaoId);
 
 // Bind first VBO as being active buffer and storing vertex attributes (coordinates)
-	glBindBuffer(GL_ARRAY_BUFFER, vboId);							// Activar VBO vËrtexs
+	glBindBuffer(GL_ARRAY_BUFFER, vboId);							// Activar VBO v√®rtexs
 
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices) + sizeof(colors), 0, GL_STATIC_DRAW);	// Allocate data to VBO starting from 0 offest
 
@@ -772,7 +772,7 @@ void draw_Grid(CMask3D quadricula, CPunt3D hquadricula)
 }
 
 
-// gridXY: Construeix un grid XY de tamany size amb pas 1 situat una alÁada h de l'eiz Z.
+// gridXY: Construeix un grid XY de tamany size amb pas 1 situat una al√ßada h de l'eiz Z.
 void gridXY(int size, GLdouble h)
 {
 	int i;
@@ -780,7 +780,7 @@ void gridXY(int size, GLdouble h)
 
 // VAO
 	GLuint vaoId = 0, vboId = 0;
-	std::vector <double> vertices, colors;		// DefiniciÛ vectors din‡mics per a vertexs i colors 
+	std::vector <double> vertices, colors;		// Definici√≥ vectors din√†mics per a vertexs i colors 
 	//vertices.resize(0);		colors.resize(0);	// Reinicialitzar vectors
 	vertices.clear();		colors.clear();		// Reinicialitzar vectors
 
@@ -820,7 +820,7 @@ void gridXY(int size, GLdouble h)
 	draw_GL_LINES_VAO(vertices, colors);
 }
 
-// gridXZ: Construeix un grid YZ de tamany size amb pas 1 situat una alÁada h de l'eiz Z.
+// gridXZ: Construeix un grid YZ de tamany size amb pas 1 situat una al√ßada h de l'eiz Z.
 void gridXZ(int size, GLdouble h)
 {
 	int i;
@@ -828,7 +828,7 @@ void gridXZ(int size, GLdouble h)
 
 // VAO
 	//GLuint vaoId = 0, vboId = 0;
-	std::vector <double> vertices, colors;		// DefiniciÛ vectors din‡mics per a vertexs i colors 
+	std::vector <double> vertices, colors;		// Definici√≥ vectors din√†mics per a vertexs i colors 
 	//vertices.resize(0);		colors.resize(0);	// Reinicialitzar vectors
 	vertices.clear();		colors.clear();		// Reinicialitzar vectors
 
@@ -873,7 +873,7 @@ void gridXZ(int size, GLdouble h)
 }
 
 
-// gridYZ: Construeix un grid YZ de tamany size amb pas 1 situat una alÁada h de l'eiz Z.
+// gridYZ: Construeix un grid YZ de tamany size amb pas 1 situat una al√ßada h de l'eiz Z.
 void gridYZ(int size, GLdouble h)
 {
 	int i;
@@ -883,7 +883,7 @@ void gridYZ(int size, GLdouble h)
 
 // VAO, VBO
 	//GLuint vaoId = 0, vboId = 0;
-	std::vector <double> vertices, colors;		// DefiniciÛ vectors din‡mics per a vertexs i colors 
+	std::vector <double> vertices, colors;		// Definici√≥ vectors din√†mics per a vertexs i colors 
 	//vertices.resize(0);		colors.resize(0);	// Reinicialitzar vectors
 	vertices.clear();		colors.clear();		// Reinicialitzar vectors
 
@@ -941,7 +941,7 @@ void gridXYZ(int size)
 
 // VAO, VBO
 	GLuint vaoId = 0, vboId = 0;
-	std::vector <double> vertices, colors;		// DefiniciÛ vectors din‡mics per a vertexs i colors 
+	std::vector <double> vertices, colors;		// Definici√≥ vectors din√†mics per a vertexs i colors 
 	//vertices.resize(0);		colors.resize(0);	// Reinicialitzar vectors
 	vertices.clear();		colors.clear();		// Reinicialitzar vectors
 
@@ -1020,8 +1020,8 @@ void FonsB()
 // integer identifier (0 for the first texture) and creates an OpenGL 
 // texture which is stored in the global array 'textures'
 // It uses SOIL library functions to load the image
-// Par‡metres:
-//		- filename: Fitxer que contÈ la imatge de qualsevol format:
+// Par√†metres:
+//		- filename: Fitxer que cont√© la imatge de qualsevol format:
 //					BMP, JPG, TIFF, TGA, GIF, i d'altres suportats per SOIL
 //		- Retorna: Identificador dins la taula textures on volem
 //                assignar la imatge
@@ -1031,8 +1031,8 @@ GLint loadIMA_SOIL(const char * filename)
 	GLuint textureID = 0;
 
 // Open the image file for reading
-//  file=fopen(nomf,"r");					// FunciÛ Visual Studio 6.0
-	errno = fopen_s(&file, filename, "rb");		// FunciÛ Visual 2010
+//  file=fopen(nomf,"r");					// Funci√≥ Visual Studio 6.0
+	errno = fopen_s(&file, filename, "rb");		// Funci√≥ Visual 2010
 
 // If the file is empty (or non existent) print an error and return false
 // if (file == NULL)
@@ -1115,25 +1115,25 @@ unsigned int loadCubemap(std::vector<std::string> faces)
 }
 
 
-// SetTextureParameters: FunciÛ que configura par‡metres de l'objecte textura IDText 
-// Par‡metres:
-//		- num: N˙mero de bloc de textura en el shader
+// SetTextureParameters: Funci√≥ que configura par√†metres de l'objecte textura IDText 
+// Par√†metres:
+//		- num: N√∫mero de bloc de textura en el shader
 //		- IDText: Identificador de l'objecte textura a configurar
-//		- extensT: ExtÈn la imatge textura fora dels lÌmits normalitzats (0,1) [TRUE] o no [FALSE]
-//		- filterT: Aplica filtre linieal a la imatge textura [TRUE] o pren pÌxel mÈs proper [FALSE]
-//		- blendT: Aplica la funciÛ de blending tenint en compte lumin‡ncia [TRUE] o nomÈs la intensitat de la imatge textura [FALSE]
+//		- extensT: Ext√©n la imatge textura fora dels l√≠mits normalitzats (0,1) [TRUE] o no [FALSE]
+//		- filterT: Aplica filtre linieal a la imatge textura [TRUE] o pren p√≠xel m√©s proper [FALSE]
+//		- blendT: Aplica la funci√≥ de blending tenint en compte lumin√†ncia [TRUE] o nom√©s la intensitat de la imatge textura [FALSE]
 //		- genMipmpT: Implementa mipmaps sobre la imatge textura [TRUE] o no [FALSE]
 void SetTextureParameters(GLint num, GLint IDText, bool extensT, bool filterT, bool blendT, bool genMipmpT)
 {
-	glActiveTexture(GL_TEXTURE0 + num);		// ActivaciÛ del bloc de texture en el shader (texture<num>).
+	glActiveTexture(GL_TEXTURE0 + num);		// Activaci√≥ del bloc de texture en el shader (texture<num>).
 	glBindTexture(GL_TEXTURE_2D, IDText);
 
-// FunciÛ de Blending de textura
+// Funci√≥ de Blending de textura
 	//if (blendT) glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 	//else glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
 
-// ExtensiÛ de textures
-	if (extensT) {	// ConfiguraciÛ textura per a que es repereixi mÈs enll‡ de coordenades (0,0)-(1,1)
+// Extensi√≥ de textures
+	if (extensT) {	// Configuraci√≥ textura per a que es repereixi m√©s enll√† de coordenades (0,0)-(1,1)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	}
@@ -1154,8 +1154,8 @@ void SetTextureParameters(GLint num, GLint IDText, bool extensT, bool filterT, b
 		else glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	}
 
-// ActivaciÛ de MipMaps de la imatge textura
-	if (genMipmpT) {	// ActivaciÛ MIPMAP en textures
+// Activaci√≥ de MipMaps de la imatge textura
+	if (genMipmpT) {	// Activaci√≥ MIPMAP en textures
 		glGenerateMipmap(GL_TEXTURE_2D);
 	}
 }
