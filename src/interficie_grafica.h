@@ -13,6 +13,39 @@
 #include "../include/gl/SOIL2.h"
 #include "music.h"
 
+// ---- Forward declarations per a gamepad + ratolí virtual ----
+struct GamepadState {
+    bool connected = false;
+
+    float lx = 0.0f, ly = 0.0f;   // stick esquerre
+    float rx = 0.0f, ry = 0.0f;   // stick dret
+    float lt = 0.0f, rt = 0.0f;   // gatillos [0..1]
+
+    bool btnA = false;
+    bool btnB = false;
+    bool btnX = false;
+    bool btnY = false;
+    bool btnLB = false;
+    bool btnRB = false;
+    bool btnBack = false;
+    bool btnStart = false;
+    bool btnLThumb = false;
+    bool btnRThumb = false;
+};
+
+
+// Aquests venen de main.cpp (definits allà)
+extern GamepadState g_Pad;
+extern GamepadState g_PadPrev;
+
+extern bool g_UsePadMouse;
+extern bool g_InventariObert;
+
+// Funcions definides a main.cpp
+void UpdateGamepad(float dt);
+void UpdatePadMouseForImGui(GLFWwindow* window);
+
+
 
 // Interficies
 enum class GameState { INIT, MENU, GAME, OPTIONS, CLUE, LOADING, END };
@@ -119,6 +152,19 @@ void renderInici(GLFWwindow* window)
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
+    {
+        ImGuiIO& io = ImGui::GetIO();
+        float dtPad = io.DeltaTime;
+        if (dtPad <= 0.0f) dtPad = 1.0f / 60.0f;
+
+        UpdateGamepad(dtPad);
+        g_UsePadMouse = g_Pad.connected;
+
+        if (g_UsePadMouse)
+            UpdatePadMouseForImGui(window);
+    }
+
+
     int display_w, display_h;
     glfwGetWindowSize(window, &display_w, &display_h);
 
@@ -188,10 +234,31 @@ void renderInici(GLFWwindow* window)
 
 void renderMenu(GLFWwindow* window)
 {
+    // --- Entrada de GLFW ---
     glfwPollEvents();
+
+    // --- Començar frame ImGui ---
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
+
+    {
+        ImGuiIO& io = ImGui::GetIO();
+        float dtPad = io.DeltaTime;
+        if (dtPad <= 0.0f) dtPad = 1.0f / 60.0f;
+
+        // Actualitzem l'estat del gamepad (sticks + botons)
+        UpdateGamepad(dtPad);
+
+        // Al menú sempre volem poder moure el cursor amb el pad si està connectat
+        g_UsePadMouse = g_Pad.connected;
+
+        if (g_UsePadMouse)
+        {
+            // Mou el cursor d'ImGui + el cursor del sistema amb el stick dret
+            UpdatePadMouseForImGui(window);
+        }
+    }
 
     int display_w = 0, display_h = 0;
     glfwGetWindowSize(window, &display_w, &display_h);
@@ -203,6 +270,7 @@ void renderMenu(GLFWwindow* window)
     ImGui::SetNextWindowSize(hudSize, ImGuiCond_Always);
     ImGui::SetNextWindowBgAlpha(0.0f);
 
+    // Fons del menú
     draw_image(texMenu, ImGui::GetIO().DisplaySize.x, display_h);
 
     ImGui::Begin("Menu", nullptr,
@@ -213,7 +281,6 @@ void renderMenu(GLFWwindow* window)
 
     ImVec2 actualSize = ImGui::GetWindowSize();
     ImVec2 buttonSize(actualSize.x / 4.0f, actualSize.y / 8.0f);
-
 
     float rightHalfX = display_w * 0.5f;
     float rightHalfWidth = display_w * 0.5f;
@@ -233,15 +300,18 @@ void renderMenu(GLFWwindow* window)
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0, 0, 0, 1));
 
     ImGui::SetCursorPosX(centerX);
-    if (ImGui::Button("Continuar", buttonSize)) act_state = GameState::GAME;
+    if (ImGui::Button("Continuar", buttonSize))
+        act_state = GameState::GAME;
     ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
     ImGui::SetCursorPosX(centerX);
-    if (ImGui::Button("Pistas", buttonSize)) act_state = GameState::CLUE;
+    if (ImGui::Button("Pistas", buttonSize))
+        act_state = GameState::CLUE;
     ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
     ImGui::SetCursorPosX(centerX);
-    if (ImGui::Button("Opcions", buttonSize)) act_state = GameState::OPTIONS;
+    if (ImGui::Button("Opcions", buttonSize))
+        act_state = GameState::OPTIONS;
     ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
     ImGui::SetCursorPosX(centerX);
@@ -255,12 +325,14 @@ void renderMenu(GLFWwindow* window)
     ImGui::PopStyleColor(4);
     ImGui::End();
 
+    // --- Render final ---
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     glfwSwapBuffers(window);
 }
+
 // -------------------- Render Options --------------------
 
 void renderOptions(GLFWwindow* window)
@@ -269,6 +341,18 @@ void renderOptions(GLFWwindow* window)
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
+
+    {
+        ImGuiIO& io = ImGui::GetIO();
+        float dtPad = io.DeltaTime;
+        if (dtPad <= 0.0f) dtPad = 1.0f / 60.0f;
+
+        UpdateGamepad(dtPad);
+        g_UsePadMouse = g_Pad.connected;
+
+        if (g_UsePadMouse)
+            UpdatePadMouseForImGui(window);
+    }
 
     int display_w = 0, display_h = 0;
     glfwGetWindowSize(window, &display_w, &display_h);
@@ -440,6 +524,18 @@ bool renderLoading(GLFWwindow* window)
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
+
+    {
+        ImGuiIO& io = ImGui::GetIO();
+        float dtPad = io.DeltaTime;
+        if (dtPad <= 0.0f) dtPad = 1.0f / 60.0f;
+
+        UpdateGamepad(dtPad);
+        g_UsePadMouse = g_Pad.connected;
+
+        if (g_UsePadMouse)
+            UpdatePadMouseForImGui(window);
+    }
 
     int display_w, display_h;
     glfwGetWindowSize(window, &display_w, &display_h);
@@ -641,6 +737,19 @@ void renderFinalJoc(GLFWwindow* window)
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
+    {
+        ImGuiIO& io = ImGui::GetIO();
+        float dtPad = io.DeltaTime;
+        if (dtPad <= 0.0f) dtPad = 1.0f / 60.0f;
+
+        UpdateGamepad(dtPad);
+        g_UsePadMouse = g_Pad.connected;
+
+        if (g_UsePadMouse)
+            UpdatePadMouseForImGui(window);
+    }
+
+
     int display_h = 0;
     SetupHUD(window, display_h);
 
@@ -706,6 +815,17 @@ void renderPistas(GLFWwindow* window)
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
+    {
+        ImGuiIO& io = ImGui::GetIO();
+        float dtPad = io.DeltaTime;
+        if (dtPad <= 0.0f) dtPad = 1.0f / 60.0f;
+
+        UpdateGamepad(dtPad);
+        g_UsePadMouse = g_Pad.connected;
+
+        if (g_UsePadMouse)
+            UpdatePadMouseForImGui(window);
+    }
     int display_w = 0, display_h = 0;
     glfwGetWindowSize(window, &display_w, &display_h);
 
