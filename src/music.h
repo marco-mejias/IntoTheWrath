@@ -2,28 +2,44 @@
 #define MUSIC_H
 
 #include <string>
+#include <map>
+#include <windows.h>
 
-static int g_volume = 100; // Volumen del juego
-static bool g_loopEnabled = false;
-static bool g_isPaused = false;
+// Identificadores
+#define ID_MUSIC  L"bg_music"
+#define ID_STEPS  L"fx_steps"
+#define ID_FLASH_ON L"fx_flash_on"
+#define ID_FLASH_OFF L"fx_flash_off"
+#define ID_CHEST L"fx_chest"
+#define ID_DOOR L"fx_door"
+#define ID_QUACK L"fx_quack"
+#define ID_STAIRS L"fx_stairs"
+#define ID_ITEM L"fx_item"
 
-// Initializes Media Foundation (must be called once before using any music functions)
-void InitMusicSystem();
 
-// Plays a music track (e.g. MP3 file). If already playing, restarts it.
-void PlayMusic(const std::wstring& filepath, bool loop = true);
+// Gestión del sistema
+void InitAudio();
+void ShutdownAudio();
 
-// Stops and releases the music player
-void StopMusic();
+// Carga de audio
+bool LoadAudio(const std::wstring& path, const std::wstring& id);
 
-// Shuts down Media Foundation (call when closing your program)
-void ShutdownMusicSystem();
+// --- REPRODUCCIÓN ---
 
-// Pauses playback (keeps current position)
-void PauseMusic();
+// Reproduce música en bucle (Chequeado manualmente)
+void PlayMusicLoop(const std::wstring& id);
 
-// Resumes playback from current position
-void ResumeMusic();    
+// Reproduce UNA VEZ (Optimizado para pasos)
+void PlaySoundOnce(const std::wstring& id);
 
-void SetMusicVolume(int volume);
+// Detener sonido
+void StopSound(const std::wstring& id);
+
+// Estado
+bool IsPlaying(const std::wstring& id);
+
+// --- NUEVO: VOLUMEN ---
+// volume: 0 a 100
+void SetVolume(const std::wstring& id, int volume);
+
 #endif

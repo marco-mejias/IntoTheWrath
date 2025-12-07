@@ -30,7 +30,7 @@ extern bool g_SobelMaskPass;
 // Dibuixa Skybox en forma de Cub, activant un shader propi.
 void dibuixa_Skybox(GLuint sk_programID, GLuint cmTexture, char eix_Polar, glm::mat4 MatriuProjeccio, glm::mat4 MatriuVista)
 {
-	//if (g_SobelMaskPass) return; //IMPORTANT PER NO ACTIVAR EL SOBEL A TOT EL SKYBOX //PEPE
+	if (g_SobelMaskPass) return; //IMPORTANT PER NO ACTIVAR EL SOBEL A TOT EL SKYBOX //PEPE
 
 	glm::mat4 ModelMatrix(1.0);
 
@@ -135,7 +135,7 @@ void dibuixa_EscenaGL(GLuint sh_programID, bool eix, GLuint axis_Id, CMask3D rei
 		{
 			if (!obj) continue;
 
-			if (obj->getName() == "Scenario.obj")
+			if (obj->getName() == "barcouwu.obj")
 			{
 				objecteOBJ = obj;
 				break;
@@ -144,7 +144,7 @@ void dibuixa_EscenaGL(GLuint sh_programID, bool eix, GLuint axis_Id, CMask3D rei
 
 		if (!objecteOBJ) {
 			fprintf(stderr,
-				"[INSPECCIO] No he trobat barquitolo.obj dins vObjectesOBJ (size=%zu)\n",
+				"[INSPECCIO] No he trobat barcouwu.obj dins vObjectesOBJ (size=%zu)\n",
 				vObjectesOBJ.size());
 			return; // o bé dibuixa l'escena normal, com vulguis
 		}
@@ -189,7 +189,19 @@ void dibuixa_EscenaGL(GLuint sh_programID, bool eix, GLuint axis_Id, CMask3D rei
 				continue;
 			}
 
-			
+			if (objecteOBJ->getName() == "patoso.obj")
+			{
+				// Saltamos este objecte → no es dibuixa
+				continue;
+			}
+
+			if (objecteOBJ->getName() == "ducki.obj")
+			{
+				// Saltamos este objecte → no es dibuixa
+				continue;
+			}
+
+
 			// Pas ModelView Matrix a shader
 			ModelMatrix = objecteOBJ->modelMatrix();  // DIFFERENT PER OBJECT
 			glUniformMatrix4fv(glGetUniformLocation(sh_programID, "modelMatrix"), 1, GL_FALSE, &ModelMatrix[0][0]);
@@ -204,6 +216,12 @@ void dibuixa_EscenaGL(GLuint sh_programID, bool eix, GLuint axis_Id, CMask3D rei
 	}
 
 	
+	//INTRO - Motivació Referents Objetctius (un general que compengui tot el prijecte) Caraceristiques del projecte (camara, estil etc) - Eines que hem fet (chatgpt) 
+	
+
+
+
+
 
 
 // Enviar les comandes gràfiques a pantalla

@@ -1,166 +1,136 @@
-﻿// Media Foundation
-
-#include <windows.h>
-#include <mfapi.h>
-#include <mfidl.h>
-#include <mfobjects.h>
-#include <mfreadwrite.h>
-#include <mfplay.h>
-#pragma comment(lib, "mfplat.lib")
-#pragma comment(lib, "mfplay.lib")
-#pragma comment(lib, "mfreadwrite.lib")
-
-
-#ifndef MFP_EVENT_TYPE_MEDIAITEM_EOF
-// Official value from the Windows SDK (MFP_EVENT_TYPE enumeration)
-#define MFP_EVENT_TYPE_MEDIAITEM_EOF ((MFP_EVENT_TYPE)0x0014)
-#endif
-
-// XAudio2
-
-//#include <xaudio2.h>
-//#include <iostream>
-//#pragma comment(lib, "mfuuid.lib")
-//#pragma comment(lib, "xaudio2.lib")
-
-// Music Header 
-
-#include "music.h"
-#include <string>
+﻿#include "music.h"
+#include <mmsystem.h>
 #include <iostream>
+#include <cstdio>
+#pragma comment(lib, "winmm.lib")
 
-// Global Media Player pointer
-static IMFPMediaPlayer* g_player = nullptr;
-
-// Custom callback class to handle media events (e.g., end of playback)
-class MusicCallback : public IMFPMediaPlayerCallback
-{
-    LONG m_refCount = 1;
-
-public:
-    // IUnknown methods
-    STDMETHODIMP_(ULONG) AddRef() override { return InterlockedIncrement(&m_refCount); }
-    STDMETHODIMP_(ULONG) Release() override
-    {
-        ULONG ulRefCount = InterlockedDecrement(&m_refCount);
-        if (ulRefCount == 0) delete this;
-        return ulRefCount;
-    }
-    STDMETHODIMP QueryInterface(REFIID riid, void** ppv) override
-    {
-        if (riid == __uuidof(IUnknown) || riid == __uuidof(IMFPMediaPlayerCallback))
-        {
-            *ppv = static_cast<IMFPMediaPlayerCallback*>(this);
-            AddRef();
-            return S_OK;
-        }
-        *ppv = nullptr;
-        return E_NOINTERFACE;
-    }
-
-    // IMFPMediaPlayerCallback
-    void STDMETHODCALLTYPE OnMediaPlayerEvent(MFP_EVENT_HEADER* pEventHeader) override
-    {
-        if (pEventHeader->eEventType == MFP_EVENT_TYPE_MEDIAITEM_EOF && g_loopEnabled && g_player)
-        {
-            // Restart playback when reaching the end
-            g_player->Play();
-        }
-    }
+// ESTRUCTURA OPTIMIZADA: Pre-calculamos los comandos de texto
+// para no tener que "sumar textos" mientras juegas.
+struct AudioInfo {
+    std::wstring alias;
+    // Comandos pre-construidos para velocidad máxima
+    std::wstring cmdPlay;
+    std::wstring cmdPlayRepeat;
+    std::wstring cmdSeekStart;
+    std::wstring cmdStop;
+    bool loaded;
 };
 
-static MusicCallback* g_callback = nullptr;
+std::map<std::wstring, AudioInfo> g_sounds;
+int g_idx = 0;
 
-void InitMusicSystem()
-{
-    HRESULT hr = MFStartup(MF_VERSION);
-    if (FAILED(hr))
-    {
-        std::cerr << "Failed to initialize Media Foundation.\n";
-    }
-    g_callback = new MusicCallback();
+void InitAudio() {
+    // Nada crítico
 }
 
-void PlayMusic(const std::wstring& filepath, bool loop)
-{
-    g_loopEnabled = loop;
-    g_isPaused = false;
-
-    // Release previous player if any
-    if (g_player)
-    {
-        g_player->Shutdown();
-        g_player->Release();
-        g_player = nullptr;
+void ShutdownAudio() {
+    for (auto& s : g_sounds) {
+        if (s.second.loaded) {
+            // Usamos el comando stop pre-calculado
+            mciSendString(L"close all", NULL, 0, NULL);
+        }
     }
-
-    HRESULT hr = MFPCreateMediaPlayer(
-        filepath.c_str(),
-        TRUE,                   // start playback immediately
-        0,                      // no special options
-        g_callback,             // event callback
-        NULL,                   // no video window (audio only)
-        &g_player
-    );
-
-    if (FAILED(hr))
-    {
-        std::wcerr << L"Failed to play music: " << filepath << std::endl;
-        g_player = nullptr;
-    }
+    g_sounds.clear();
 }
 
-void PauseMusic()
-{
-    if (g_player && !g_isPaused)
-    {
-        g_player->Pause();
-        g_isPaused = true;
-    }
-}
+bool LoadAudio(const std::wstring& path, const std::wstring& id) {
+    if (g_sounds.find(id) != g_sounds.end()) return true;
 
-void ResumeMusic()
-{
-    if (g_player && g_isPaused)
-    {
-        g_player->Play();
-        g_isPaused = false;
-    }
-}
+    // Generamos el alias una sola vez
+    std::wstring alias = L"snd_" + std::to_wstring(g_idx++);
 
-void StopMusic()
-{
-    if (g_player)
-    {
-        g_player->Stop();
-        g_player->Shutdown();
-        g_player->Release();
-        g_player = nullptr;
-        g_isPaused = false;
+    // Abrimos el archivo
+    std::wstring openCmd = L"open \"" + path + L"\" type mpegvideo alias " + alias;
+    MCIERROR err = mciSendString(openCmd.c_str(), NULL, 0, NULL);
+
+    if (err != 0) {
+        // Reintento modo simple
+        openCmd = L"open \"" + path + L"\" alias " + alias;
+        err = mciSendString(openCmd.c_str(), NULL, 0, NULL);
+    }
+
+    if (err == 0) {
+        AudioInfo info;
+        info.alias = alias;
+        info.loaded = true;
+
+        // --- OPTIMIZACIÓN DE RENDIMIENTO ---
+        // Pre-cocinamos los comandos para no perder tiempo concatenando strings luego
+        info.cmdPlay = L"play " + alias;
+        info.cmdPlayRepeat = L"play " + alias + L" repeat";
+        info.cmdSeekStart = L"seek " + alias + L" to start";
+        info.cmdStop = L"stop " + alias;
+
+        g_sounds[id] = info;
+
+        // Warm-up (Carga en RAM)
+        mciSendString(info.cmdSeekStart.c_str(), NULL, 0, NULL);
+        mciSendString(info.cmdPlay.c_str(), NULL, 0, NULL);
+        mciSendString(info.cmdStop.c_str(), NULL, 0, NULL);
+
+        return true;
+    }
+    else {
+        wchar_t buff[256];
+        mciGetErrorString(err, buff, 256);
+        fwprintf(stderr, L"[AUDIO LOAD ERROR] %ls -> %ls\n", path.c_str(), buff);
+        return false;
     }
 }
 
-void ShutdownMusicSystem()
-{
-    StopMusic();
-    MFShutdown();
+void SetVolume(const std::wstring& id, int volume) {
+    if (g_sounds.find(id) == g_sounds.end()) return;
 
-    if (g_callback)
-    {
-        g_callback->Release();
-        g_callback = nullptr;
-    }
+    // Clamp 0-100
+    if (volume < 0) volume = 0;
+    if (volume > 100) volume = 100;
+
+    // MCI usa rango 0-1000. Multiplicamos por 10.
+    int mciVol = volume * 10;
+
+    std::wstring alias = g_sounds[id].alias;
+
+    // Este comando se usa poco, así que podemos construirlo al vuelo
+    wchar_t cmd[128];
+    swprintf_s(cmd, 128, L"setaudio %s volume to %d", alias.c_str(), mciVol);
+
+    mciSendString(cmd, NULL, 0, NULL);
 }
 
-void SetMusicVolume(int volume)
-{
-    g_volume = volume;
+void PlayMusicLoop(const std::wstring& id) {
+    if (g_sounds.find(id) == g_sounds.end()) return;
+    if (IsPlaying(id)) return;
 
-    if (g_player)
-    {
-        // Normalizar a rango [0.0, 1.0]
-        float normalized = static_cast<float>(volume) / 100.0f;
-        g_player->SetVolume(normalized);
-    }
+    // Usamos el comando pre-calculado: MAXIMA VELOCIDAD
+    const AudioInfo& info = g_sounds[id];
+    mciSendString(info.cmdSeekStart.c_str(), NULL, 0, NULL);
+    mciSendString(info.cmdPlayRepeat.c_str(), NULL, 0, NULL);
 }
 
+void PlaySoundOnce(const std::wstring& id) {
+    if (g_sounds.find(id) == g_sounds.end()) return;
+
+    // Acceso directo a memoria pre-calculada
+    const AudioInfo& info = g_sounds[id];
+
+    // Ejecución inmediata sin construir strings
+    mciSendString(info.cmdSeekStart.c_str(), NULL, 0, NULL);
+    mciSendString(info.cmdPlay.c_str(), NULL, 0, NULL);
+}
+
+void StopSound(const std::wstring& id) {
+    if (g_sounds.find(id) == g_sounds.end()) return;
+    mciSendString(g_sounds[id].cmdStop.c_str(), NULL, 0, NULL);
+}
+
+bool IsPlaying(const std::wstring& id) {
+    if (g_sounds.find(id) == g_sounds.end()) return false;
+
+    wchar_t status[128];
+    // Usamos swprintf para ser rápidos y seguros
+    wchar_t cmd[128];
+    swprintf_s(cmd, 128, L"status %s mode", g_sounds[id].alias.c_str());
+
+    mciSendString(cmd, status, 128, NULL);
+    return (wcscmp(status, L"playing") == 0);
+}
