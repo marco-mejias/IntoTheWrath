@@ -1,11 +1,11 @@
-//******** PRACTICA VISUALITZACI” GR¿FICA INTERACTIVA (Escola Enginyeria - UAB)
-//******** Entorn b‡sic VS2022 MONOFINESTRA amb OpenGL 4.6, interfÌcie GLFW 3.4, ImGui i llibreries GLM
-//******** Enric MartÌ (Setembre 2025)
+//******** PRACTICA VISUALITZACI√ì GR√ÄFICA INTERACTIVA (Escola Enginyeria - UAB)
+//******** Entorn b√†sic VS2022 MONOFINESTRA amb OpenGL 4.6, interf√≠cie GLFW 3.4, ImGui i llibreries GLM
+//******** Enric Mart√≠ (Setembre 2025)
 // objLoader.cpp: Implements the class COBJModel.
 //
-//	  VersiÛ 2.0:	- AdaptaciÛ funcions a crear un VAO per a cada material del fitxer
+//	  Versi√≥ 2.0:	- Adaptaci√≥ funcions a crear un VAO per a cada material del fitxer
 //////////////////////////////////////////////////////////////////////////////////////
-//           Wavefront OBJ Loader (C) 2000 Tim C. Schrˆder
+//           Wavefront OBJ Loader (C) 2000 Tim C. Schr√∂der
 // -------------------------------------------------------------------
 //    tcs_web@gmx.de / tcs_web@hotmail.com / tcs@thereisnofate.net
 //                 http://glvelocity.demonews.com
@@ -442,7 +442,7 @@ int _stdcall COBJModel::LoadModel(char* szFileName)
 	// Open the OBJ file
 	////////////////////////////////////////////////////////////////////////
 	errno = 0;
-	errno = fopen_s(&hFile, szFileName, "r"); // FunciÛ Visual 2005 i 2010
+	errno = fopen_s(&hFile, szFileName, "r"); // Funci√≥ Visual 2005 i 2010
 
 	// Success ?
 	if (errno != 0)
@@ -921,7 +921,7 @@ CVAO _stdcall COBJModel::RenderToVAOList(const Face* pFaces,
 
 	objVAO.vaoId = 0;	objVAO.vboId = 0;	objVAO.eboId = 0; objVAO.nVertexs = 0; objVAO.nIndices = 0;
 
-	std::vector <double> vertices, colors, normals, textures;		// DefiniciÛ vectors din‡mics per a vertexs i colors 
+	std::vector <double> vertices, colors, normals, textures;		// Definici√≥ vectors din√†mics per a vertexs i colors 
 	vertices.resize(0);		colors.resize(0);	normals.resize(0);		textures.resize(0);// Reinicialitzar vectors
 
 	// Obtenir color actual definit en OpenGL amb glColor();
@@ -1161,7 +1161,7 @@ CVAO _stdcall COBJModel::RenderToVAOList(const Face* pFaces,
 	//glEndList();
 
 // ----------------------- VAO
-// CreaciÛ d'un VAO i un VBO i c‡rrega de la geometria. Guardar identificador VAO identificador VBO a struct CVAO.
+// Creaci√≥ d'un VAO i un VBO i c√†rrega de la geometria. Guardar identificador VAO identificador VBO a struct CVAO.
 	objVAO = load_TRIANGLES_VAO(vertices, normals, colors, textures);
 
 	return objVAO;
@@ -1185,7 +1185,7 @@ void _stdcall COBJModel::loadToVAOList(const Face* pFaces,
 	CVAO objVAO;
 	objVAO.vaoId = 0;	objVAO.vboId = 0;	objVAO.eboId = 0;	 objVAO.nVertexs = 0; 	objVAO.nIndices = 0;
 
-	std::vector <double> vertices, colors, normals, textures;		// DefiniciÛ vectors din‡mics per a vertexs i colors 
+	std::vector <double> vertices, colors, normals, textures;		// Definici√≥ vectors din√†mics per a vertexs i colors 
 	vertices.resize(0);		colors.resize(0);	normals.resize(0);		textures.resize(0);// Reinicialitzar vectors
 
 	std::vector <int>::size_type nv = vertices.size();	// Tamany del vector vertices en elements.
@@ -1213,7 +1213,7 @@ void _stdcall COBJModel::loadToVAOList(const Face* pFaces,
 				if (iPreviousMaterial != (int)pFaces[i].iMaterialIndex)
 				{	// Canvi de material per a les cares del fitxer OBJ
 					if (nv > 0) {
-						// CreaciÛ d'un VAO i un VBO i c‡rrega de la geometria. Guardar identificador VAO identificador VBO a struct CVAO.
+						// Creaci√≥ d'un VAO i un VBO i c√†rrega de la geometria. Guardar identificador VAO identificador VBO a struct CVAO.
 						objVAO = load_TRIANGLES_VAO(vertices, normals, colors, textures);
 						Set_VAOList_OBJ(index_VAO, objVAO);
 						index_VAO = index_VAO + 1;
@@ -1422,7 +1422,7 @@ void _stdcall COBJModel::loadToVAOList(const Face* pFaces,
 	nv = vertices.size();	// Tamany del vector vertices en elements.
 
 	if (nv != 0)
-	{	// CreaciÛ del darrer VAO i un VBO i c‡rrega de la geometria. Guardar identificador VAO identificador VBO a struct CVAO.
+	{	// Creaci√≥ del darrer VAO i un VBO i c√†rrega de la geometria. Guardar identificador VAO identificador VBO a struct CVAO.
 		objVAO = load_TRIANGLES_VAO(vertices, normals, colors, textures);
 		Set_VAOList_OBJ(index_VAO, objVAO);
 	}
@@ -1790,8 +1790,8 @@ int COBJModel::LoadTexture2(const char szFileName[_MAX_PATH])
 
 
 	// Open the image file for reading
-	// file=fopen(filename,"r");					// FunciÛ Visual Studio 6.0
-	errno = fopen_s(&file, szFileName, "r");			// FunciÛ Visual 2005
+	// file=fopen(filename,"r");					// Funci√≥ Visual Studio 6.0
+	errno = fopen_s(&file, szFileName, "r");			// Funci√≥ Visual 2005
 
 	// If the file is empty (or non existent) print an error and return false
 	// if (file == NULL)
@@ -1803,8 +1803,8 @@ int COBJModel::LoadTexture2(const char szFileName[_MAX_PATH])
 	// Close the image file
 	fclose(file);
 
-	// SOIL_load_OGL_texture: FunciÛ que llegeix la imatge del fitxer filename
-	//				si Ès compatible amb els formats SOIL (BMP,JPG,GIF,TIF,TGA,etc.)
+	// SOIL_load_OGL_texture: Funci√≥ que llegeix la imatge del fitxer filename
+	//				si √©s compatible amb els formats SOIL (BMP,JPG,GIF,TIF,TGA,etc.)
 	//				i defineix la imatge com a textura OpenGL retornant l'identificador 
 	//				de textura OpenGL.
 	iTexture = SOIL_load_OGL_texture
@@ -1853,7 +1853,7 @@ void _stdcall COBJModel::EliminaLlista(int prim_Id)
 	deleteVAOList(prim_Id);
 }
 
-// ------------------------ GESTI” VAOLIST
+// ------------------------ GESTI√ì VAOLIST
 void _stdcall COBJModel::initVAOList_OBJ()
 {
 	int i;
@@ -1963,8 +1963,8 @@ void _stdcall COBJModel::draw_TriVAO_OBJ(GLuint sh_programID)
 
 	for (i = 0; i < numMaterials; i++)
 	{
-		UseMaterial_ShaderID(sh_programID, vMaterials[i]);	// ActivaciÛ Material i-Ëssim
+		UseMaterial_ShaderID(sh_programID, vMaterials[i]);	// Activaci√≥ Material i-√®ssim
 
-		draw_TriVAO_Object_OBJ(i);							// Dibuix objecte i-Ëssim
+		draw_TriVAO_Object_OBJ(i);							// Dibuix objecte i-√®ssim
 	}
 }

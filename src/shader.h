@@ -1,6 +1,6 @@
-//******** PRACTICA VISUALITZACI” GR¿FICA INTERACTIVA (Escola Enginyeria - UAB)
-//******** Entorn b‡sic VS2022 MONOFINESTRA amb OpenGL 4.6, interfÌcie GLFW, ImGui i llibreries GLM
-//******** Enric MartÌ (Setembre 2025)
+//******** PRACTICA VISUALITZACI√ì GR√ÄFICA INTERACTIVA (Escola Enginyeria - UAB)
+//******** Entorn b√†sic VS2022 MONOFINESTRA amb OpenGL 4.6, interf√≠cie GLFW, ImGui i llibreries GLM
+//******** Enric Mart√≠ (Setembre 2025)
 // shader.h : interface of the Shader class
 //
 /////////////////////////////////////////////////////////////////////////////
@@ -9,7 +9,7 @@
 #ifndef SHADER_H
 #define SHADER_H
 
-// Entorn VGI: Constants i tipus de l'aplicaciÛ entorn VGI
+// Entorn VGI: Constants i tipus de l'aplicaci√≥ entorn VGI
 #include "stdafx.h"
 
 class Shader
@@ -21,7 +21,7 @@ public:
 	unsigned int programID;	// the program ID
 //-------------- Entorn VGI: Fi De Variables globals de la classe Shader 
 
-//-------------- Entorn VGI: Funcions (mËtodes) de de la classe Shader 
+//-------------- Entorn VGI: Funcions (m√®todes) de de la classe Shader 
 // Constructor reads and builds the Vertex Shader (VS) and Fragment Shader (FS) into a Program (programID)
 //	Shader(std::string file_Vert, std::string file_Frag);
 	Shader();
@@ -66,6 +66,6 @@ public:
 
 	void DeleteProgram();
 
-//-------------- Entorn VGI: Fi Funcions (mËtodes) de de la classe Shader 
+//-------------- Entorn VGI: Fi Funcions (m√®todes) de de la classe Shader 
 };
 #endif

@@ -1,9 +1,9 @@
-//******** PRACTICA VISUALITZACI” GR¿FICA INTERACTIVA (Escola Enginyeria - UAB)
-//******** Entorn b‡sic VS2022 MONOFINESTRA amb OpenGL 4.6, interfÌcie GLFW 3.4, ImGui i llibreries GLM
-//******** Enric MartÌ (Setembre 2025)
+//******** PRACTICA VISUALITZACI√ì GR√ÄFICA INTERACTIVA (Escola Enginyeria - UAB)
+//******** Entorn b√†sic VS2022 MONOFINESTRA amb OpenGL 4.6, interf√≠cie GLFW 3.4, ImGui i llibreries GLM
+//******** Enric Mart√≠ (Setembre 2025)
 // objLoader.h: Inteface of the class COBJModel.
 //
-//	  VersiÛ 2.0:	- AdaptaciÛ funcions a crear un VAO per a cada material del fitxer
+//	  Versi√≥ 2.0:	- Adaptaci√≥ funcions a crear un VAO per a cada material del fitxer
 //////////////////////////////////////////////////////////////////////////////////////
 
 #ifndef OBJLOADER_H
@@ -17,7 +17,7 @@
 #include <math.h>
 #include "OBB.h"
 
-// M‡xima mida vector VAOList
+// M√†xima mida vector VAOList
 #define MAX_SIZE_VAOLIST 125
 
 // Needed structures

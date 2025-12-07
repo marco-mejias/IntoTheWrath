@@ -152,7 +152,7 @@ void renderInici(GLFWwindow* window)
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    {
+{
         ImGuiIO& io = ImGui::GetIO();
         float dtPad = io.DeltaTime;
         if (dtPad <= 0.0f) dtPad = 1.0f / 60.0f;
