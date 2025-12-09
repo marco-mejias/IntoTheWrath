@@ -2,18 +2,32 @@
 #include <mmsystem.h>
 #include <iostream>
 #include <cstdio>
+#include <cmath> 
+#include <cwchar> // Necesario para wcscmp y funciones wide
 #pragma comment(lib, "winmm.lib")
 
-// ESTRUCTURA OPTIMIZADA: Pre-calculamos los comandos de texto
-// para no tener que "sumar textos" mientras juegas.
+// Definición de variables globales compartidas (Implementadas en music.cpp)
+int g_musicVolume = 100;
+int g_sfxVolume = 100;
+
+const std::wstring SFX_IDS[] = {
+    ID_STEPS, ID_ITEM, ID_STAIRS, ID_CHEST, ID_QUACK,
+    ID_DOOR, ID_FLASH_ON, ID_FLASH_OFF, ID_GUN, ID_OPEN_BOOK, ID_CLOSE_BOOK, ID_MENU_HOVER, ID_MENU_SELECT
+};
+const size_t SFX_COUNT = sizeof(SFX_IDS) / sizeof(SFX_IDS[0]);
+
+
+// Estructura que guarda la información del audio
 struct AudioInfo {
     std::wstring alias;
-    // Comandos pre-construidos para velocidad máxima
+    int baseVolume; // NUEVO: Volumen base (0-100)
+    bool loaded;
+
+    // --- CAMPOS RESTAURADOS PARA OPTIMIZACIÓN DE RENDIMIENTO ---
     std::wstring cmdPlay;
     std::wstring cmdPlayRepeat;
     std::wstring cmdSeekStart;
     std::wstring cmdStop;
-    bool loaded;
 };
 
 std::map<std::wstring, AudioInfo> g_sounds;
@@ -26,25 +40,25 @@ void InitAudio() {
 void ShutdownAudio() {
     for (auto& s : g_sounds) {
         if (s.second.loaded) {
-            // Usamos el comando stop pre-calculado
-            mciSendString(L"close all", NULL, 0, NULL);
+            std::wstring cmd = L"close " + s.second.alias;
+            mciSendString(cmd.c_str(), NULL, 0, NULL);
         }
     }
     g_sounds.clear();
 }
 
-bool LoadAudio(const std::wstring& path, const std::wstring& id) {
+// MODIFICADA: Ahora acepta el volumen base
+bool LoadAudio(const std::wstring& path, const std::wstring& id, int defaultVolume) {
+
     if (g_sounds.find(id) != g_sounds.end()) return true;
 
-    // Generamos el alias una sola vez
     std::wstring alias = L"snd_" + std::to_wstring(g_idx++);
 
-    // Abrimos el archivo
+    // Comando OPEN
     std::wstring openCmd = L"open \"" + path + L"\" type mpegvideo alias " + alias;
     MCIERROR err = mciSendString(openCmd.c_str(), NULL, 0, NULL);
 
     if (err != 0) {
-        // Reintento modo simple
         openCmd = L"open \"" + path + L"\" alias " + alias;
         err = mciSendString(openCmd.c_str(), NULL, 0, NULL);
     }
@@ -53,9 +67,9 @@ bool LoadAudio(const std::wstring& path, const std::wstring& id) {
         AudioInfo info;
         info.alias = alias;
         info.loaded = true;
+        info.baseVolume = defaultVolume; // GUARDAMOS EL VOLUMEN BASE
 
-        // --- OPTIMIZACIÓN DE RENDIMIENTO ---
-        // Pre-cocinamos los comandos para no perder tiempo concatenando strings luego
+        // --- OPTIMIZACIÓN DE RENDIMIENTO: Pre-calculamos los comandos ---
         info.cmdPlay = L"play " + alias;
         info.cmdPlayRepeat = L"play " + alias + L" repeat";
         info.cmdSeekStart = L"seek " + alias + L" to start";
@@ -63,10 +77,11 @@ bool LoadAudio(const std::wstring& path, const std::wstring& id) {
 
         g_sounds[id] = info;
 
-        // Warm-up (Carga en RAM)
+        // Warm-up: Aseguramos que el audio se carga en RAM
         mciSendString(info.cmdSeekStart.c_str(), NULL, 0, NULL);
-        mciSendString(info.cmdPlay.c_str(), NULL, 0, NULL);
-        mciSendString(info.cmdStop.c_str(), NULL, 0, NULL);
+
+        // Aplicar el volumen inicial (Base * Master)
+        SetVolume(id, (id == ID_MUSIC) ? g_musicVolume : g_sfxVolume);
 
         return true;
     }
@@ -78,59 +93,72 @@ bool LoadAudio(const std::wstring& path, const std::wstring& id) {
     }
 }
 
-void SetVolume(const std::wstring& id, int volume) {
+// MODIFICADA: Aplica (Volumen Base * Volumen Máster) / 100
+void SetVolume(const std::wstring& id, int masterVolume) {
     if (g_sounds.find(id) == g_sounds.end()) return;
 
-    // Clamp 0-100
-    if (volume < 0) volume = 0;
-    if (volume > 100) volume = 100;
+    AudioInfo& info = g_sounds[id];
 
-    // MCI usa rango 0-1000. Multiplicamos por 10.
-    int mciVol = volume * 10;
+    // Fórmula clave: (Base * Máster) / 100
+    int finalVolume = (info.baseVolume * masterVolume) / 100;
 
-    std::wstring alias = g_sounds[id].alias;
+    if (finalVolume < 0) finalVolume = 0;
+    if (finalVolume > 100) finalVolume = 100;
 
-    // Este comando se usa poco, así que podemos construirlo al vuelo
+    // MCI usa rango 0-1000
+    int mciVol = finalVolume * 10;
+
     wchar_t cmd[128];
-    swprintf_s(cmd, 128, L"setaudio %s volume to %d", alias.c_str(), mciVol);
+    swprintf_s(cmd, 128, L"setaudio %s volume to %d", info.alias.c_str(), mciVol);
 
     mciSendString(cmd, NULL, 0, NULL);
 }
 
+// NUEVA: Reproduce música en bucle
 void PlayMusicLoop(const std::wstring& id) {
     if (g_sounds.find(id) == g_sounds.end()) return;
+    // Solo reproducimos si no está sonando ya
     if (IsPlaying(id)) return;
 
-    // Usamos el comando pre-calculado: MAXIMA VELOCIDAD
     const AudioInfo& info = g_sounds[id];
+
+    // Usamos comandos pre-calculados (cmdSeekStart, cmdPlayRepeat)
     mciSendString(info.cmdSeekStart.c_str(), NULL, 0, NULL);
     mciSendString(info.cmdPlayRepeat.c_str(), NULL, 0, NULL);
 }
 
+// NUEVA: Reproduce UNA VEZ (Para pasos y efectos)
 void PlaySoundOnce(const std::wstring& id) {
     if (g_sounds.find(id) == g_sounds.end()) return;
 
-    // Acceso directo a memoria pre-calculada
     const AudioInfo& info = g_sounds[id];
 
-    // Ejecución inmediata sin construir strings
+    // Usamos comandos pre-calculados (cmdSeekStart, cmdPlay)
+    // Esto asegura que el sonido se dispare instantáneamente desde el inicio.
     mciSendString(info.cmdSeekStart.c_str(), NULL, 0, NULL);
     mciSendString(info.cmdPlay.c_str(), NULL, 0, NULL);
 }
 
+// NUEVA: Detiene el sonido inmediatamente
 void StopSound(const std::wstring& id) {
     if (g_sounds.find(id) == g_sounds.end()) return;
-    mciSendString(g_sounds[id].cmdStop.c_str(), NULL, 0, NULL);
+    const AudioInfo& info = g_sounds[id];
+    mciSendString(info.cmdStop.c_str(), NULL, 0, NULL);
 }
 
+// NUEVA: Consulta si está sonando
 bool IsPlaying(const std::wstring& id) {
     if (g_sounds.find(id) == g_sounds.end()) return false;
 
-    wchar_t status[128];
-    // Usamos swprintf para ser rápidos y seguros
-    wchar_t cmd[128];
-    swprintf_s(cmd, 128, L"status %s mode", g_sounds[id].alias.c_str());
+    const AudioInfo& info = g_sounds[id];
 
-    mciSendString(cmd, status, 128, NULL);
-    return (wcscmp(status, L"playing") == 0);
+    wchar_t status[128];
+    wchar_t cmd[128];
+    swprintf_s(cmd, 128, L"status %s mode", info.alias.c_str());
+
+    if (mciSendString(cmd, status, 128, NULL) == 0) {
+        // La respuesta estándar de MCI para saber si está sonando
+        return (wcscmp(status, L"playing") == 0);
+    }
+    return false;
 }

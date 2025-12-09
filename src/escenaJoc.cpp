@@ -135,7 +135,7 @@ void dibuixa_EscenaGL(GLuint sh_programID, bool eix, GLuint axis_Id, CMask3D rei
 		{
 			if (!obj) continue;
 
-			if (obj->getName() == "barcouwu.obj")
+			if (obj->getName() == "cofre.obj")
 			{
 				objecteOBJ = obj;
 				break;
@@ -144,7 +144,7 @@ void dibuixa_EscenaGL(GLuint sh_programID, bool eix, GLuint axis_Id, CMask3D rei
 
 		if (!objecteOBJ) {
 			fprintf(stderr,
-				"[INSPECCIO] No he trobat barcouwu.obj dins vObjectesOBJ (size=%zu)\n",
+				"[INSPECCIO] No he trobat cofre.obj dins vObjectesOBJ (size=%zu)\n",
 				vObjectesOBJ.size());
 			return; // o bé dibuixa l'escena normal, com vulguis
 		}
@@ -196,6 +196,36 @@ void dibuixa_EscenaGL(GLuint sh_programID, bool eix, GLuint axis_Id, CMask3D rei
 			}
 
 			if (objecteOBJ->getName() == "ducki.obj")
+			{
+				// Saltamos este objecte → no es dibuixa
+				continue;
+			}
+
+			if (objecteOBJ->getName() == "INTERACTUABLE_espada_gir.obj")
+			{
+				// Saltamos este objecte → no es dibuixa
+				continue;
+			}
+
+			if (objecteOBJ->getName() == "INTERACTUABLE_ancla_gir.obj")
+			{
+				// Saltamos este objecte → no es dibuixa
+				continue;
+			}
+
+			if (objecteOBJ->getName() == "INTERACTUABLE_calavera_gir.obj")
+			{
+				// Saltamos este objecte → no es dibuixa
+				continue;
+			}
+
+			if (objecteOBJ->getName() == "INTERACTUABLE_botella_gir.obj")
+			{
+				// Saltamos este objecte → no es dibuixa
+				continue;
+			}
+
+			if (objecteOBJ->getName() == "INTERACTUABLE_barril_gir.obj")
 			{
 				// Saltamos este objecte → no es dibuixa
 				continue;

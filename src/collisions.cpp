@@ -69,8 +69,8 @@ bool ResolveCapsuleOBBSlidingCollision(Capsule& cap, const OBB* box)
 	return true;
 }
 
-void CheckPlayerSlidingCollisionNew(glm::vec3 nextPos, const float radius, 
-	glm::vec3& currentPos, float eyesHeight, 
+void CheckPlayerSlidingCollisionNew(glm::vec3 nextPos, const float radius,
+	glm::vec3& currentPos, float eyesHeight,
 	std::vector<COBJModel*> vHitboxOBJ)
 {
 	Capsule playerCap;
@@ -98,7 +98,7 @@ void CheckPlayerSlidingCollisionNew(glm::vec3 nextPos, const float radius,
 				glm::vec3 correction = (playerCap.p0 - beforeP0); // movement done by Resolve()
 				accumulatedNormal += glm::normalize(correction);
 			}
-			
+
 		}
 
 		if (!collided)

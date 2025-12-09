@@ -5,24 +5,40 @@
 #include <map>
 #include <windows.h>
 
-// Identificadores
-#define ID_MUSIC  L"bg_music"
-#define ID_STEPS  L"fx_steps"
-#define ID_FLASH_ON L"fx_flash_on"
-#define ID_FLASH_OFF L"fx_flash_off"
-#define ID_CHEST L"fx_chest"
-#define ID_DOOR L"fx_door"
-#define ID_QUACK L"fx_quack"
-#define ID_STAIRS L"fx_stairs"
-#define ID_ITEM L"fx_item"
+// Identificadores de Sonido
+#define ID_MUSIC      L"bg_music"
+#define ID_STEPS      L"fx_steps"
+#define ID_ITEM       L"fx_item"
+#define ID_STAIRS     L"fx_stairs"
+#define ID_CHEST      L"fx_chest"
+#define ID_QUACK      L"fx_quack"
+#define ID_DOOR       L"fx_door"
+#define ID_FLASH_ON   L"fx_flash_on"
+#define ID_FLASH_OFF  L"fx_flash_off"
+#define ID_GUN		  L"fx_gun"
+#define ID_OPEN_BOOK  L"fx_open_book"
+#define ID_CLOSE_BOOK L"fx_close_book"
+#define ID_MENU_HOVER L"fx_menu_hover"
+#define ID_MENU_SELECT L"fx_menu_select"
 
+// --- VARIABLES GLOBALES DE VOLUMEN (Compartidas con ImGui) ---
+extern int g_musicVolume; // Volumen Música (0-100)
+extern int g_sfxVolume;   // Volumen Efectos (0-100)
+extern const std::wstring SFX_IDS[];
+extern const size_t SFX_COUNT;
+
+// --- NUEVA ESTRUCTURA: CONFIGURACIÓN DE VOLUMEN BASE ---
+struct SoundConfig {
+    int defaultVolume; // Volumen inicial (0-100)
+    bool isMusic;      // Para saber si debe buclear o no
+};
 
 // Gestión del sistema
 void InitAudio();
 void ShutdownAudio();
 
-// Carga de audio
-bool LoadAudio(const std::wstring& path, const std::wstring& id);
+// Carga de audio (Ahora requiere la configuración base)
+bool LoadAudio(const std::wstring& path, const std::wstring& id, int defaultVolume);
 
 // --- REPRODUCCIÓN ---
 
@@ -38,8 +54,7 @@ void StopSound(const std::wstring& id);
 // Estado
 bool IsPlaying(const std::wstring& id);
 
-// --- NUEVO: VOLUMEN ---
-// volume: 0 a 100
-void SetVolume(const std::wstring& id, int volume);
+// --- VOLUMEN (Ahora aplica volumen base + máster) ---
+void SetVolume(const std::wstring& id, int masterVolume);
 
 #endif

@@ -3,7 +3,7 @@
 #include "ImGui/imgui_impl_opengl3.h"
 #include "ImGui/nfd.h"              
 #include <cmath>
-#include <fstream>
+#include <fstream>Z
 #include <sstream>
 #include <string>
 #include <GL/glew.h>
@@ -298,9 +298,6 @@ void renderInici(GLFWwindow* window)
     if (ButtonWithSound("Jugar", buttonSize)) act_state = GameState::LOADING;
 
     ImGui::SetCursorPos(ImVec2(startX, startY + buttonSize.y + spacing));
-    if (ButtonWithSound("Opciones", buttonSize)) act_state = GameState::OPTIONS;
-
-    ImGui::SetCursorPos(ImVec2(startX, startY + buttonSize.y + spacing *4));
     if (ButtonWithSound("Sortir", buttonSize))  glfwSetWindowShouldClose(window, GLFW_TRUE);
 
     ImGui::PopStyleVar();
@@ -825,7 +822,6 @@ void renderCofreContrasena(GLFWwindow* window)
     // --- Popup de contrasenya ---
     if (ranures == solucio)
     {
-        PlaySoundOnce(ID_CHEST);
         PlaySoundOnce(ID_ITEM);
         cofre_on = false;
         joc_quadres_finalitzat = true;
