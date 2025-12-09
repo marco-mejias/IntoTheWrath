@@ -2696,7 +2696,7 @@ void InitGL()
 
 	// Mans Hylics multi-anim (0..9)
 	InitHandQuad();       // crea el quad HUD
-	InitHandAnimations(); // carrega les sheets Animation0..9
+	//InitHandAnimations(); // carrega les sheets Animation0..9
 	g_HandsProg = CompileAndLink(".\\shaders\\hands.vert", ".\\shaders\\hands.frag");
 
 	InitAigua();
@@ -3087,7 +3087,7 @@ void FPV_UpdateMovement(GLFWwindow* window, float dt)
 			if (movingXZ && g_Grounded)
 			{
 				PlaySoundOnce(ID_STEPS);
-				fprintf(stderr, "caminando");
+				//fprintf(stderr, "caminando");
 
 				float pasoRitmo = g_IsSprinting ? 0.35f : 0.55f;
 				stepCooldown = pasoRitmo;
@@ -3483,7 +3483,9 @@ void OnPaint(GLFWwindow* window)
 		break;
 
 	case PERSPECT:
-		if (g_Inspecciona) {
+		if (act_state == GameState::INSPECTING) 
+		//if (g_Inspecciona) 
+		{
 			ProjectionMatrix = Projeccio_Perspectiva(shader_programID, 0, 0, w, h, OPV.R);
 
 			GLdouble vpv[3] = { 0.0, 0.0, 1.0 };
@@ -7049,7 +7051,7 @@ void HandleEscapeKey(GLFWwindow* window)
 	// (Opcional: podries fer aquí que ESC tanqui l'inventari, si vols)
 
 	// 2) Toggle GAME <-> MENU
-	if (act_state == GameState::GAME)
+	if ((act_state == GameState::GAME || act_state == GameState::INSPECTING))
 	{
 		act_state = GameState::MENU;
 		FPV_SetMouseCapture(false);
@@ -7108,7 +7110,7 @@ void UpdateGamepadActions(GLFWwindow* window)
 		return;
 
 	// Només té sentit la majoria de coses en mode joc
-	if (act_state == GameState::GAME)
+	if ((act_state == GameState::GAME || act_state == GameState::INSPECTING))
 	{
 		// X → Interactuar (E)
 		bool xJustPressed = (g_Pad.btnX && !g_PadPrev.btnX);
@@ -7182,7 +7184,7 @@ void OnKeyDown(GLFWwindow* window, int key, int scancode, int action, int mods)
 	// ─────────────────────────────────────────────────────────────────
 	// Gestió específica quan estem al joc (GameState::GAME)
 	// ─────────────────────────────────────────────────────────────────
-	if (act_state == GameState::GAME)
+	if ((act_state == GameState::GAME || act_state == GameState::INSPECTING))
 	{
 		// Bloqueja els shortcuts Shift+W/A/S/D quan estem en FPV
 		if ((action == GLFW_PRESS || action == GLFW_REPEAT) && g_FPV && (mods & GLFW_MOD_SHIFT)) {
@@ -7469,14 +7471,7 @@ void OnKeyDown(GLFWwindow* window, int key, int scancode, int action, int mods)
 			return;
 		}
 
-		// Tecla G: mode inspecció
-		if (action == GLFW_PRESS && mods == 0 && key == GLFW_KEY_G)
-		{
-			g_Inspecciona = !g_Inspecciona;
-			g_FPV = !g_FPV;
-			projeccio = PERSPECT;
-			return;
-		}
+		
 
 		// Tecla I: inventari
 		if (action == GLFW_PRESS && g_FPV && mods == 0 && key == GLFW_KEY_I)
@@ -7500,6 +7495,44 @@ void OnKeyDown(GLFWwindow* window, int key, int scancode, int action, int mods)
 		}
 	}
 
+
+	// Tecla G: mode inspecció
+	if (action == GLFW_PRESS && mods == 0 && key == GLFW_KEY_G)
+	{
+		printf("Modo inspeccion\n");
+		if (act_state == GameState::GAME)
+		{
+			act_state = GameState::INSPECTING;
+			FPV_SetMouseCapture(false);
+			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+			//return;
+		}
+		else if (act_state == GameState::INSPECTING)
+		{
+			act_state = GameState::GAME;
+			FPV_SetMouseCapture(true);
+			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+			//return;
+		}
+		//if (!g_Inspecciona)
+		//{
+		//	g_HeadlightEnabled = true;
+		//	//g_FKeyPrev = false;
+		//}
+		//else
+		//{
+		//	g_HeadlightEnabled = false;
+		//}
+
+		//SkyBoxCube = !SkyBoxCube;
+
+		g_Inspecciona = !g_Inspecciona;
+		g_FPV = !g_FPV;
+		//g_SobelOn = !g_SobelOn;
+
+
+		return;
+	}
 	// ─────────────────────────────────────────────────────────────────
 	// ESC: primer tanquem UI (cofre / mapa), després GAME <-> MENU
 	// ─────────────────────────────────────────────────────────────────
@@ -10596,6 +10629,29 @@ int main(void)
 				if (!fpv_started) g_FPVInitApplied = true; initExtraTextures();
 
 			}
+		}
+		else if (act_state == GameState::INSPECTING)
+		{
+			FPV_SetMouseCapture(true);
+			g_FVP_move = true;
+
+			printf("Sobel actual: %d\n", g_SobelOn);
+			// Events de GLFW
+			glfwPollEvents();
+
+			// ─────────────────────────────────────────────────────────────
+			// 1) ESCENA 3D + SOBEL (sense ImGui) → OnPaint
+			//    (aquí es fa el glClear, Draw sala, props, Sobel, mà, etc.)
+			// ─────────────────────────────────────────────────────────────
+			OnPaint(window);
+
+			// ─────────────────────────────────────────────────────────────
+			// 4) SWAP BUFFERS → presentem escena 3D + HUD ImGui
+			// ─────────────────────────────────────────────────────────────
+			glfwMakeContextCurrent(window);
+			//glfwSwapBuffers(window);
+
+			renderItemDescription(window, "Nombre Item", "Descripcion Item");
 		}
 		
 		else if (act_state == GameState::GAME)
