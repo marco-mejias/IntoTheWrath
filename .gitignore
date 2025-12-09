@@ -11,3 +11,5 @@ EntornVGI.sln
 /src_Samuel
 /scenario
 scenario-20251204T131205Z-1-001.zip
+/scenario-aislado
+*.zip
