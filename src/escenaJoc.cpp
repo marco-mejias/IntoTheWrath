@@ -135,7 +135,7 @@ void dibuixa_EscenaGL(GLuint sh_programID, bool eix, GLuint axis_Id, CMask3D rei
 		{
 			if (!obj) continue;
 
-			if (obj->getName() == "cofre.obj")
+			if (obj->getName() == "palanca_prueba.obj")
 			{
 				objecteOBJ = obj;
 				break;
@@ -144,7 +144,7 @@ void dibuixa_EscenaGL(GLuint sh_programID, bool eix, GLuint axis_Id, CMask3D rei
 
 		if (!objecteOBJ) {
 			fprintf(stderr,
-				"[INSPECCIO] No he trobat cofre.obj dins vObjectesOBJ (size=%zu)\n",
+				"[INSPECCIO] No he trobat palanca_prueba.obj dins vObjectesOBJ (size=%zu)\n",
 				vObjectesOBJ.size());
 			return; // o bé dibuixa l'escena normal, com vulguis
 		}

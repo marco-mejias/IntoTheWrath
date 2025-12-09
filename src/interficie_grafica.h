@@ -48,7 +48,7 @@ void UpdatePadMouseForImGui(GLFWwindow* window);
 
 
 // Interficies
-enum class GameState { INIT, MENU, GAME, OPTIONS, CLUE, LOADING, END };
+enum class GameState { INIT, MENU, GAME, OPTIONS, CLUE, LOADING, INSPECTING, END };
 GameState act_state = GameState::INIT; // Per veure en quin estat està el joc
 
 // IDs de textura per cada estat
@@ -549,6 +549,128 @@ void renderOptions(GLFWwindow* window)
     ImGui::End();
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    glfwSwapBuffers(window);
+}
+
+// -------------------- Render Item Descriptions --------------------
+
+void renderItemDescription(GLFWwindow* window, const std::string& itemName, const std::string& itemDescription)
+{
+    // --- Entrada de GLFW ---
+    glfwPollEvents();
+
+    // --- Començar frame ImGui ---
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    {
+        ImGuiIO& io = ImGui::GetIO();
+        float dtPad = io.DeltaTime;
+        if (dtPad <= 0.0f) dtPad = 1.0f / 60.0f;
+
+        // Actualitzem l'estat del gamepad (sticks + botons)
+        UpdateGamepad(dtPad);
+
+        // Permetre el cursor amb pad si està connectat
+        g_UsePadMouse = g_Pad.connected;
+
+        if (g_UsePadMouse)
+        {
+            // Mou el cursor d'ImGui + el cursor del sistema amb el stick dret
+            UpdatePadMouseForImGui(window);
+        }
+    }
+
+    // Obtenir mida de la finestra
+    int display_w = 0, display_h = 0;
+    glfwGetWindowSize(window, &display_w, &display_h);
+
+    // Mida de la finestra de descripció (percentatge de la pantalla)
+    ImVec2 windowSize(display_w * 0.4f, display_h * 0.3f);
+
+    // Posicionar al centre de la pantalla
+    ImVec2 windowPos((display_w - windowSize.x) * 0.5f, (display_h - windowSize.y) * 0.5f);
+
+    // Estil de la finestra (fons semi-transparent amb vores arrodonides)
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20.0f, 15.0f));
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.1f, 0.1f, 0.15f, 0.95f));
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.4f, 0.4f, 0.6f, 0.8f));
+    ImGui::PushStyleColor(ImGuiCol_BorderShadow, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+
+    ImGui::SetNextWindowPos(windowPos, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(windowSize, ImGuiCond_Always);
+
+    // Flags per a la finestra (sense barra de títol, sense redimensionar)
+    ImGui::Begin("Item Description", nullptr,
+        ImGuiWindowFlags_NoResize |
+        ImGuiWindowFlags_NoCollapse |
+        ImGuiWindowFlags_NoSavedSettings |
+        ImGuiWindowFlags_NoTitleBar |
+        ImGuiWindowFlags_NoScrollbar);
+
+    // Estil per al text
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+
+    // Nom de l'ítem (centrat i més gran)
+    ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[0]); // Font per defecte o una més gran si tens
+    ImGui::SetCursorPosX((windowSize.x - ImGui::CalcTextSize(itemName.c_str()).x) * 0.5f);
+    ImGui::TextColored(ImVec4(0.9f, 0.8f, 0.3f, 1.0f), "%s", itemName.c_str());
+    ImGui::PopFont();
+
+    // Separador
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // Descripció de l'ítem (text ajustat)
+    ImGui::PushTextWrapPos(windowSize.x - 40.0f); // Wrap text dins la finestra
+    ImGui::TextWrapped("%s", itemDescription.c_str());
+    ImGui::PopTextWrapPos();
+
+    ImGui::PopStyleColor(); // ImGuiCol_Text
+
+    // Botó per tancar (al peu de la finestra)
+    ImGui::SetCursorPosY(windowSize.y - 60.0f);
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    ImVec2 buttonSize(windowSize.x * 0.3f, 35.0f);
+    ImGui::SetCursorPosX((windowSize.x - buttonSize.x) * 0.5f);
+
+    // Estil del botó
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.3f, 0.3f, 0.5f, 0.8f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4f, 0.4f, 0.6f, 0.9f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.2f, 0.2f, 0.4f, 1.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
+
+    if (ImGui::Button("Tancar", buttonSize))
+    {
+        // Aquí pots afegir la lògica per tancar la finestra de descripció
+        // Per exemple: showItemDescription = false;
+    }
+
+    // Si vols permetre tancar amb la tecla ESC
+    if (ImGui::IsKeyPressed(ImGuiKey_Escape))
+    {
+        // Lògica per tancar la finestra
+    }
+
+    ImGui::PopStyleVar(); // FrameRounding
+    ImGui::PopStyleColor(3); // Colors del botó
+
+    ImGui::End();
+
+    // Restaurar estils
+    ImGui::PopStyleColor(3); // Colors de la finestra
+    ImGui::PopStyleVar(2); // WindowRounding i WindowPadding
+
+    // --- Render final ---
+    // IMPORTANT: No fem glClear aquí perquè volem veure el joc al fons
+    // El joc ja hauria de ser renderitzat abans de cridar aquesta funció
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
