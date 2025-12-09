@@ -45,7 +45,11 @@ enum class TipusInteraccioContext {
 	SUPERIOR_A_TIMO,
 	TIMO_A_SUPERIOR,
 	ESCAPAR_BARCA,          // ho deixem per més endavant (barca final
-	COFRE_CODI
+	COFRE_CODI,
+	PORTA_CAPABAIX,
+	PORTA_CAPADALT,
+	PORTA_SUPERIOR_ENT,
+	PORTA_SUPERIOR_SURT
 };
 
 TipusInteraccioContext g_InteraccioContext = TipusInteraccioContext::NONE;
@@ -69,6 +73,18 @@ float     g_RadiZonaSuperiorATimo = 1.5f;
 
 glm::vec3 g_PosZonaTimoASuperior(-9.69f, 11.70f, -5.17f);
 float     g_RadiZonaTimoASuperior = 1.5f;
+
+glm::vec3 g_PosPortaMitjaCapAbaix(-7.73f, 5.20f, 0.27f); //pattata
+float     g_RadiPortaMitjaCapAbaix = 1.5f;
+
+glm::vec3 g_PosPortaMitjaCapAdalt(7.0f, 5.20f, 0.27f);;
+float     g_RadiPortaMitjaCapAdalt = 1.5f;
+
+glm::vec3 g_PosPortaSuperiorEntrada(7.52f, 8.70f, -0.73f);
+float     g_RadiPortaSuperiorEntrada = 1.5f;
+
+glm::vec3 g_PosPortaSuperiorSortida(-7.0f, 8.70f, -0.73f);
+float     g_RadiPortaSuperiorSortida = 1.5f;
 
 // DESTINS de cada zona (on apareixerà el jugador)
 glm::vec3 g_DestZonaBaixaAMitja(-9.73f, 5.20f, 0.27f);
@@ -178,9 +194,11 @@ struct HandAnimation {
 	int    rows = 0;   // Filas de la rejilla
 	int    frameCount = 0;   // Nº de frames reales (<= cols*rows)
 	float srcFPS = 24.0f;    // FPS "reals" de captura / referència
+	float offsetX = 0.0f;
 };
 
-constexpr int HAND_ANIM_COUNT = 10;
+constexpr int HAND_ANIM_COUNT = 15;
+int g_QueuedHandAnim = -1;
 
 HandAnimation g_HandAnims[HAND_ANIM_COUNT];
 
@@ -202,26 +220,57 @@ GLuint g_HandsVBO = 0;
 GLuint g_HandsEBO = 0;
 GLuint g_HandsProg = 0;
 
+// ─────────────────────────────────────────────
+// Estat de l'animació de la llanterna
+// ─────────────────────────────────────────────
+enum class FlashlightAnimState {
+	NONE,        // cap seqüència en curs
+	TURNING_ON,  // estem fent 9 -> 7 -> encendre
+	TURNING_OFF  // estem fent 8 -> apagar
+};
+
+FlashlightAnimState g_FlashAnimState = FlashlightAnimState::NONE;
+
+//MODE INSPECCIO
+// --- VARIABLES GLOBALES INSPECCIÓN ---
+float g_InspectZoom = 2.5f;       // <--- CAMBIADO: Valor más bajo = Más cerca al inicio
+float g_InspectRotX = 0.0f;
+float g_InspectRotY = 0.0f;
+bool  g_Dragging = false;
+double g_LastMouseX, g_LastMouseY;
+float g_ScrollY = 0.0f;           // <--- NUEVA: Para guardar el movimiento de la rueda
+
 //BACKFLIP FPV
 bool  g_BackflipActive = false;
 float g_BackflipTime = 0.0f;
 float g_BackflipDur = 0.50f;
 float g_BackflipLift = 0.30f;
 
+void QueueHandAnimation(int id)
+{
+	if (id < 0 || id >= HAND_ANIM_COUNT) return;
+	g_QueuedHandAnim = id;
+}
+
+
 //VARIABLES MUSICA I SO
 
 const std::wstring MUSIC_FILE = L"../audio/musica_fons.wav";
 const std::wstring STEPS_FILE = L"../audio/pases_rec.wav";
-const std::wstring ITEM_FILE = L"../audio/zelda_item.wav";
+const std::wstring ITEM_FILE = L"../audio/item.wav";
 const std::wstring STAIRS_FILE = L"../audio/stairs.wav";
 const std::wstring CHEST_FILE = L"../audio/open_chest.wav";
 const std::wstring QUACK_FILE = L"../audio/quack.wav";
 const std::wstring DOOR_FILE = L"../audio/open_door.wav";
-const std::wstring FLASH_ON_FILE = L"../audio/flash_on.wav";
-const std::wstring FLASH_OFF_FILE = L"../audio/flash_off.wav";
+const std::wstring FLASH_ON_FILE = L"../audio/flash_on_edit_2.wav";
+const std::wstring FLASH_OFF_FILE = L"../audio/flash_off_edit.wav";
+const std::wstring GUN_FILE = L"../audio/gun.wav";
+const std::wstring OPEN_BOOK_FILE = L"../audio/open_book.wav";
+const std::wstring CLOSE_BOOK_FILE = L"../audio/close_book.wav";
+const std::wstring MENU_HOVER_FILE = L"../audio/menu_hover.wav";
+const std::wstring MENU_SELECT_FILE = L"../audio/menu_select.wav";
 
 float g_stepCooldown = 0.0f;
-
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -247,7 +296,7 @@ GLuint g_MatapatosVBO = 0;
 // Model .OBJ per dibuixar els objectius del Matapatos
 COBJModel* g_MatapatosGavina = nullptr;
 // Animació de mans que es llança quan encertes un pato al Matapatos
-constexpr int MATAPATOS_HIT_HAND_ANIM = 0;
+constexpr int MATAPATOS_HIT_HAND_ANIM = 2;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PISTA "MAPA PALANQUES" (document al terra de la planta baixa)
@@ -264,6 +313,13 @@ float g_TimeScale = 1.0f;   // multiplicador global
 glm::vec3 g_FPVLook(0.0f);
 glm::vec3 g_FPVRight(0.0f);
 glm::vec3 g_FPVUp(0.0f);
+
+// IDs d'animacions de mans
+const int HAND_ANIM_MAPA_TANCAR = 11;   // Cerrar cuaderno
+const int HAND_ANIM_MAPA_OBRIR = 12;   // Abrir cuaderno
+
+// Quan acabem l'animació d'obrir, hem de mostrar el quadern
+bool g_PendingMapaOpenAfterAnim = false;
 
 
 
@@ -533,8 +589,7 @@ static bool RayIntersectsAABB(const glm::vec3& orig,
 // Quad per a les mans en NDC (HUD)
 // ─────────────────────────────────────────────────────────────────────────────
 
-void InitHandQuad()
-{
+void InitHandQuad() {
 	if (g_HandsVAO != 0) return;
 
 	float xMin = -0.35f;
@@ -554,6 +609,19 @@ void InitHandQuad()
 	yMin = cy - h * 0.5f;
 	yMax = cy + h * 0.5f;
 
+	// Clamp inferior (que no baje de -1)
+	if (yMin < -1.0f) {
+		float dy = -1.0f - yMin;
+		yMin += dy;
+		yMax += dy;
+	}
+
+	// 🎯 AQUÍ AJUSTAS LA ALTURA A GUSTO
+	float handYOffset = -0.25f;  // + sube, - baja
+	yMin += handYOffset;
+	yMax += handYOffset;
+	// ----------------------------------
+
 	float verts[] = {
 		xMin, yMin, 0.0f, 1.0f,
 		xMax, yMin, 1.0f, 1.0f,
@@ -562,6 +630,7 @@ void InitHandQuad()
 	};
 
 	unsigned int idx[] = { 0,1,2, 0,2,3 };
+
 	glGenVertexArrays(1, &g_HandsVAO);
 	glGenBuffers(1, &g_HandsVBO);
 	glGenBuffers(1, &g_HandsEBO);
@@ -688,20 +757,71 @@ void LoadHandAnimationSheet(int id, float srcFPS, int cols, int rows, int frameC
 	}
 }
 
-// Animation0_sheet.png (int id, float srcFPS, int cols, int rows, int frameCount);
+// AnimationX_sheet.png  → (id, fps, cols, rows, frameCount)
 void InitHandAnimations()
 {
-	LoadHandAnimationSheet(0, 6.0f, 22, 1, 1);
-	LoadHandAnimationSheet(1, 30.0f, 22, 9, 188);
-	LoadHandAnimationSheet(2, 30.0f, 22, 3, 55);
-	LoadHandAnimationSheet(3, 30.0f, 22, 7, 147);
-	LoadHandAnimationSheet(4, 30.0f, 22, 15, 310);
-	LoadHandAnimationSheet(5, 30.0f, 22, 4, 78);
-	LoadHandAnimationSheet(6, 30.0f, 22, 3, 58);
-	LoadHandAnimationSheet(7, 30.0f, 22, 2, 37);
-	LoadHandAnimationSheet(8, 30.0f, 22, 4, 84);
-	LoadHandAnimationSheet(9, 30.0f, 22, 4, 76);
+	// 0 – Sacar llave 1 (DIESTRA → a la derecha)
+	g_HandAnims[0].offsetX = 0.25f;   // prueba este valor
+	LoadHandAnimationSheet(0, 45.0f, 22, 9, 180);
+
+	// 1 – Sacar llave 2 (DIESTRA)
+	g_HandAnims[1].offsetX = 0.25f;
+	LoadHandAnimationSheet(1, 45.0f, 22, 9, 196);
+
+	// 2 – Pistola matapatos (DIESTRA)
+	g_HandAnims[2].offsetX = 0.25f;
+	LoadHandAnimationSheet(2, 60.0f, 22, 4, 68);
+
+	// 3 – Perder matapatos (DIESTRA)
+	g_HandAnims[3].offsetX = 0.25f;
+	LoadHandAnimationSheet(3, 45.0f, 22, 6, 119);
+
+	// 4 – Ganar matapatos (DIESTRA)
+	g_HandAnims[4].offsetX = 0.25f;
+	LoadHandAnimationSheet(4, 45.0f, 22, 5, 90);
+
+	// 5 – Hacha inspeccionar (CENTRO)
+	g_HandAnims[5].offsetX = 0.25f;
+	LoadHandAnimationSheet(5, 45.0f, 22, 14, 300);
+
+	// 6 – Hacha pegar (CENTRO)
+	g_HandAnims[6].offsetX = 0.25f;
+	LoadHandAnimationSheet(6, 45.0f, 22, 10, 204);
+
+	// 7 – Linterna encender (CENTRO)
+	g_HandAnims[7].offsetX = 0.0f;
+	LoadHandAnimationSheet(7, 45.0f, 22, 10, 212);
+
+	// 8 – Linterna apagar (CENTRO)
+	g_HandAnims[8].offsetX = 0.0f;
+	LoadHandAnimationSheet(8, 45.0f, 22, 10, 209);
+
+	// 9 – Encender cerilla (CENTRO)
+	g_HandAnims[9].offsetX = 0.0f;
+	LoadHandAnimationSheet(9, 45.0f, 22, 11, 240);
+
+	// 10 – Empujar puerta (CENTRO)
+	g_HandAnims[10].offsetX = 0.25f;
+	LoadHandAnimationSheet(10, 45.0f, 22, 4, 76);
+
+	// 11 – Cerrar cuaderno (CENTRO)
+	g_HandAnims[11].offsetX = 0.0f;
+	LoadHandAnimationSheet(11, 80.0f, 22, 11, 224);
+
+	// 12 – Abrir cuaderno (CENTRO)
+	g_HandAnims[12].offsetX = 0.0f;
+	LoadHandAnimationSheet(12, 60.0f, 22, 10, 207);
+
+	// 13 – Aplausos (CENTRO)
+	g_HandAnims[13].offsetX = 0.0f;
+	LoadHandAnimationSheet(13, 45.0f, 22, 7, 150);
+
+	// 14 – Mirarse las manos (intro)
+	g_HandAnims[14].offsetX = 0.0f;   // centrada, o un pelín a la derecha si quieres
+	LoadHandAnimationSheet(14, 45.0f, /*cols*/ 22, /*rows*/ 15, /*frames*/ 310);
+
 }
+
 
 void StartHandAnimation(int id)
 {
@@ -725,6 +845,9 @@ void StartHandAnimation(int id)
 // ─────────────────────────────────────────────────────────────────────────────
 // Control de l'animació de mans
 // ─────────────────────────────────────────────────────────────────────────────
+// Llanterna amb tecla F
+bool g_HeadlightEnabled = true;
+bool g_FKeyPrev = false;
 
 void ActualitzaAnimacioMans(float /*dt*/)
 {
@@ -738,7 +861,7 @@ void ActualitzaAnimacioMans(float /*dt*/)
 		n = anim.frameCount;          // Mode sheet
 	}
 	else if (!anim.frames.empty()) {
-		n = (int)anim.frames.size();  // Mode antic (Anar carregant PNG's)
+		n = (int)anim.frames.size();  // Mode antic
 	}
 	else {
 		return;
@@ -753,15 +876,64 @@ void ActualitzaAnimacioMans(float /*dt*/)
 	int frameIdx = (int)floorf(t * srcFPS);
 
 	if (frameIdx >= n) {
+		// Hem arribat al final de l'animació actual
 		frameIdx = n - 1;
 		g_HandFrame = frameIdx;
 		g_HandPlaying = false;
+
 		fprintf(stderr, "[MANS] Animacio END (%d)\n", g_CurrentHandAnim);
+
+		// ─────────────────────────────────────────────
+		// 1) STATE MACHINE DE LA LLANTERNA
+		// ─────────────────────────────────────────────
+		// ON: seqüència 9 (cerilla) -> 7 (linterna encendre) -> llum ON
+		if (g_FlashAnimState == FlashlightAnimState::TURNING_ON &&
+			g_CurrentHandAnim == 7 &&          // Anim 7 = "Linterna encender"
+			g_QueuedHandAnim < 0)              // ja no queda res en cua
+		{
+			g_HeadlightEnabled = true;
+			g_FlashAnimState = FlashlightAnimState::NONE;
+			fprintf(stderr, "[FLASH] Linterna ON després de l'animació.\n");
+		}
+
+		// OFF: seqüència només 8 (linterna apagar) -> llum OFF
+		if (g_FlashAnimState == FlashlightAnimState::TURNING_OFF &&
+			g_CurrentHandAnim == 8)            // Anim 8 = "Linterna apagar"
+		{
+			g_HeadlightEnabled = false;
+			g_FlashAnimState = FlashlightAnimState::NONE;
+			fprintf(stderr, "[FLASH] Linterna OFF després de l'animació.\n");
+		}
+
+		// ─────────────────────────────────────────────
+		// 2) OBRIR MAPA DE PALANQUES DESPRÉS D’OBRIR QUADERN
+		// ─────────────────────────────────────────────
+		if (g_PendingMapaOpenAfterAnim &&
+			g_CurrentHandAnim == HAND_ANIM_MAPA_OBRIR)   // = 12
+		{
+			g_PendingMapaOpenAfterAnim = false;
+			g_MapaPalanquesObrit = true;
+
+			fprintf(stderr, "[MAPA PALANQUES] Obrint mapa DESPRÉS animació mans\n");
+		}
+
+		// ─────────────────────────────────────────────
+		// 3) Si hi ha una animació en cua, la comencem ara
+		// ─────────────────────────────────────────────
+		if (g_QueuedHandAnim >= 0) {
+			int next = g_QueuedHandAnim;
+			g_QueuedHandAnim = -1;
+			StartHandAnimation(next);
+		}
+
 		return;
 	}
 
 	g_HandFrame = frameIdx;
 }
+
+
+
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -820,6 +992,10 @@ void dibuixa_Mano()
 	glUniform1f(glGetUniformLocation(g_HandsProg, "uThreshold"), g_UmbralObraDinn);
 	glUniform1f(glGetUniformLocation(g_HandsProg, "uDitherAmp"), g_DitherAmp);
 	glUniform1i(glGetUniformLocation(g_HandsProg, "uGammaMap"), g_GammaMap ? 1 : 0);
+
+	float offsetX = anim.offsetX;      // p.ej. 0.25f para las diestras
+	float offsetY = 0.0f;              // vertical ya la controlas con InitHandQuad
+	glUniform2f(glGetUniformLocation(g_HandsProg, "uOffset"), offsetX, offsetY);
 
 	glBindVertexArray(g_HandsVAO);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -908,14 +1084,13 @@ bool  g_IsSprinting = false;
 
 bool g_FVP_move = true;
 
-// Llanterna amb tecla F
-bool g_HeadlightEnabled = true;
-bool g_FKeyPrev = false;
 
 const float ROOM_XMIN = -4.0f, ROOM_XMAX = +4.0f;
 const float ROOM_ZMIN = -3.0f, ROOM_ZMAX = +3.0f;
 const float ROOM_YMIN = 0.0f, ROOM_YMAX = +3.0f;
 const float FPV_RADIUS = 0.30f;
+bool g_IntroHandsPlayed = false;
+
 
 enum class PlantaBarco { BAIXA = 0, MITJA = 1, SUPERIOR = 2 };
 PlantaBarco g_PlantaActual = PlantaBarco::BAIXA;
@@ -1000,30 +1175,7 @@ void DibuixaHUDMatapatos()
 	if (g_MatapatosShowRewardMsg) {
 		double now = glfwGetTime();
 		if (now - g_MatapatosRewardMsgStart < g_MatapatosRewardMsgDurada) {
-
-			ImGui::SetNextWindowPos(
-				ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.18f),
-				ImGuiCond_Always,
-				ImVec2(0.5f, 0.0f)
-			);
-
-			ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar
-				| ImGuiWindowFlags_NoResize
-				| ImGuiWindowFlags_NoMove
-				| ImGuiWindowFlags_NoScrollbar
-				| ImGuiWindowFlags_AlwaysAutoResize
-				| ImGuiWindowFlags_NoSavedSettings;
-
-			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
-			ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.85f));
-			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.9f, 0.4f, 1.0f));
-
-			ImGui::Begin("HUD_Matapatos_Reward", nullptr, flags);
-			ImGui::Text("Has aconseguit una destral!");
-			ImGui::End();
-
-			ImGui::PopStyleColor(2);
-			ImGui::PopStyleVar();
+			claimRewards(io,0);
 		}
 		else {
 			g_MatapatosShowRewardMsg = false;
@@ -1055,7 +1207,12 @@ void DibuixaHUDMatapatos()
 		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
 
 		ImGui::Begin("HUD_Matapatos_Prompt", nullptr, flags);
-		ImGui::Text("Prem E per interactuar");
+		ImGui::Text(
+			g_Pad.connected
+			? "Prem X per pujar les escales"
+			: "Prem E per pujar les escales"
+		);
+
 		ImGui::End();
 
 		ImGui::PopStyleColor(2);
@@ -1141,7 +1298,12 @@ void DibuixaHUDMapaPalanques()
 	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
 
 	ImGui::Begin("HUD_MapaPalanques_Prompt", nullptr, flags);
-	ImGui::Text("Prem E per mirar el mapa de palanques");
+	ImGui::Text(
+		g_Pad.connected
+		? "Prem X per mirar el paper"
+		: "Prem E per mirar el paper"
+	);
+
 	ImGui::End();
 
 	ImGui::PopStyleColor(2);
@@ -1284,6 +1446,18 @@ void DibuixaHUDInteraccioContextual()
 	case TipusInteraccioContext::COFRE_CODI:
 		text = "Prem E per obrir el cofre";
 		break;
+	case TipusInteraccioContext::PORTA_CAPABAIX:
+		text = "Prem E per obrir la porta";
+		break;
+	case TipusInteraccioContext::PORTA_CAPADALT:
+		text = "Prem E per obrir la porta";
+		break;
+	case TipusInteraccioContext::PORTA_SUPERIOR_ENT:
+		text = "Prem E per trencar la porta";
+		break;
+	case TipusInteraccioContext::PORTA_SUPERIOR_SURT:
+		text = "Prem E per obrir la porta";
+		break;
 
 	default:
 		break;
@@ -1304,13 +1478,8 @@ void DibuixaHUDInteraccioContextual()
 // ─────────────────────────────────────────────────────────────────────────────
 void DibuixaInventari()
 {
-	if (!g_InventariObert)
-		return;
+	if (!g_InventariObert || act_state != GameState::GAME || !g_FPV) return;
 
-	if (act_state != GameState::GAME || !g_FPV)
-		return;
-
-	// MENTRE l'inventari estigui obert, forcem el cursor visible
 	if (window) {
 		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 		g_FPVCaptureMouse = false;
@@ -1320,101 +1489,107 @@ void DibuixaInventari()
 
 	ImGuiIO& io = ImGui::GetIO();
 
-	// Posició: marge dret, a mitja alçada
-	ImGui::SetNextWindowPos(
-		ImVec2(io.DisplaySize.x - 20.0f, io.DisplaySize.y * 0.5f),
-		ImGuiCond_Always,
-		ImVec2(1.0f, 0.5f)
-	);
+	// Mida del panell d'inventari (imatge)
+	float winWidth = io.DisplaySize.x * 0.45f;
+	float winHeight = io.DisplaySize.y * 0.8f;
+
+	// Posició centrada
+	ImVec2 winPos((io.DisplaySize.x - winWidth) * 0.5f,
+		(io.DisplaySize.y - winHeight) * 0.5f);
+
+	// La finestra ocupa tota la pantalla (invisible)
+	ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
+	ImGui::SetNextWindowSize(io.DisplaySize, ImGuiCond_Always);
+	ImGui::SetNextWindowBgAlpha(0.0f);
 
 	ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar
 		| ImGuiWindowFlags_NoResize
+		| ImGuiWindowFlags_NoMove
 		| ImGuiWindowFlags_NoScrollbar
-		| ImGuiWindowFlags_AlwaysAutoResize
 		| ImGuiWindowFlags_NoSavedSettings;
 
 	ImGui::Begin("INVENTARI", nullptr, flags);
 
-	ImGui::Text("Inventari");
-	ImGui::Separator();
-
-	// DEBUG: mostra quants items tens i quin index està seleccionat ara
-	ImGui::TextDisabled("Items: %d  |  Seleccionat: %d",
-		(int)g_Inventari.size(), g_InventariItemSeleccionat);
-
-	if (g_Inventari.empty()) {
-		ImGui::TextDisabled("No tens cap objecte encara.");
-		ImGui::End();
-		return;
+	// Imatge de fons centrada
+	if (texInventariFons != 0) {
+		ImTextureID texId = (ImTextureID)(intptr_t)texInventariFons;
+		ImVec2 p0 = winPos;
+		ImVec2 p1 = ImVec2(winPos.x + winWidth, winPos.y + winHeight);
+		ImGui::GetWindowDrawList()->AddImage(texId, p0, p1);
 	}
 
-	// --- Grid d'icones ---
-	const float iconSize = 64.0f; // mida icona
-	const float iconPadding = 12.0f;  // espai entre icones
-	const int   cols = 3; // quantes columnes al grid
+	ImGui::SetCursorPos(ImVec2(winPos.x - ImGui::GetWindowPos().x + 30,
+		winPos.y - ImGui::GetWindowPos().y + 30));
 
+	const float iconSize = 64.0f;
+	const float horitzontalPadding = 12.0f; 
+	const float verticalPadding = 20.0f;
+	const int   cols = 4;
 	int colActual = 0;
+
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1, 1, 1, 0.15f));
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1, 1, 1, 0.25f));
 
 	for (int i = 0; i < (int)g_Inventari.size(); ++i) {
 		auto& item = g_Inventari[i];
-
 		ImGui::PushID(i);
 
 		bool clicat = false;
-
 		if (item.texIcon != 0) {
 			ImTextureID texId = (ImTextureID)(intptr_t)item.texIcon;
-			clicat = ImGui::ImageButton(texId, ImVec2(iconSize, iconSize), ImVec2(0, 0), ImVec2(1, 1), 1);
+			clicat = ImGui::ImageButton(texId, ImVec2(iconSize, iconSize));
 		}
 		else {
 			clicat = ImGui::Button(item.nom.c_str(), ImVec2(iconSize, iconSize));
 		}
 
-		if (clicat) {
-			g_InventariItemSeleccionat = i;
-			fprintf(stderr, "[INVENTARI] Click item %d (%s)\n",
-				i, item.id.c_str());
-		}
-
-		// Nom petit sota la icona
-		ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 4.0f);
-		ImGui::TextWrapped("%s", item.nom.c_str());
+		if (clicat) g_InventariItemSeleccionat = i;
 
 		ImGui::PopID();
 
 		colActual++;
-		if (colActual < cols) {
-			ImGui::SameLine(0.0f, iconPadding);
-		}
-		else {
+		if (colActual < cols) ImGui::SameLine(0.0f, horitzontalPadding);
+		else 
+		{
 			colActual = 0;
+			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + verticalPadding);
 		}
 	}
 
-	ImGui::Separator();
-	ImGui::Dummy(ImVec2(0.0f, 4.0f));
+	ImGui::PopStyleColor(3);
 
-	// Panell de descripció de l'item seleccionat 
 	if (g_InventariItemSeleccionat >= 0 &&
 		g_InventariItemSeleccionat < (int)g_Inventari.size())
 	{
 		const auto& sel = g_Inventari[g_InventariItemSeleccionat];
 
-		ImGui::Text("Seleccionat:");
-		ImGui::TextColored(ImVec4(1.0f, 0.9f, 0.3f, 1.0f), "%s", sel.nom.c_str());
+		// Centrar el nom
+		float textWidth = ImGui::CalcTextSize(sel.nom.c_str()).x;
+		float posX = winPos.x - ImGui::GetWindowPos().x + (winWidth - textWidth) * 0.5f;
+		float posY = winPos.y - ImGui::GetWindowPos().y + winHeight - 130;
+		ImGui::SetCursorPos(ImVec2(posX, posY));
+		ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 1.0f), "%s", sel.nom.c_str());
 
+		// Centrar la descripció (wrap)
 		if (!sel.descripcio.empty()) {
-			ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + 260.0f);
-			ImGui::TextDisabled("%s", sel.descripcio.c_str());
+			float descWidth = winWidth - 80; // ample màxim
+			float posXdesc = winPos.x - ImGui::GetWindowPos().x + (winWidth - descWidth) * 0.5f;
+			ImGui::SetCursorPos(ImVec2(posXdesc, posY + 25));
+			ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + descWidth);
+			ImGui::TextWrapped("%s", sel.descripcio.c_str());
 			ImGui::PopTextWrapPos();
 		}
 	}
-	else {
-		ImGui::TextDisabled("Fes click sobre un objecte per veure'n la descripcio.");
+	else
+	{
+		const char* msg = "Fes click sobre un objecte per veure'n la descripcio.";
+		float textWidth = ImGui::CalcTextSize(msg).x;
+		float posX = winPos.x - ImGui::GetWindowPos().x + (winWidth - textWidth) * 0.5f;
+		float posY = winPos.y - ImGui::GetWindowPos().y + winHeight - 130;
+		ImGui::SetCursorPos(ImVec2(posX, posY));
+		ImGui::TextDisabled("%s", msg);
 	}
-
-	ImGui::Dummy(ImVec2(0.0f, 5.0f));
-	ImGui::TextDisabled("Prem I per tancar l'inventari.");
 
 	ImGui::End();
 }
@@ -1470,6 +1645,8 @@ static void ApplyPhongObraDinnDefaults() {
 
 	// Llanterna ON per defecte
 	g_HeadlightEnabled = true;
+	g_FlashAnimState = FlashlightAnimState::NONE;
+
 }
 //---------------------------------------//
 //		Carregar Escenari Inicial       //
@@ -1577,23 +1754,17 @@ static void EnterFPV() {
 
 	g_ShowRoom = true;
 
-
-
-
 	carregarEscenaInicialMultiObj();
 	OnVistaSkyBox();
 
-	for (COBJModel* obj : vObOBJ) //patata; solucion provisional
+	for (COBJModel* obj : vObOBJ)//pattata; solucion provisional
 	{
-		if (obj->getName() == "cofre_arriba_cerrado.obj")
-		{
-			obj->changeRendering(true);
-		}
-
-		if (obj->getName() == "cofre_arriba_abierto.obj")
-		{
-			obj->changeRendering(false);
-		}
+		if (obj->getName() == "cofre_arriba_abierto.obj")  obj->changeRendering(false);
+		if (obj->getName() == "cofre.obj")  obj->changeRendering(false);
+		if (obj->getName() == "puerta1_open.obj")  obj->changeRendering(false);
+		if (obj->getName() == "puerta2_open.obj")  obj->changeRendering(false);
+		if (obj->getName() == "puerta3_open.obj")  obj->changeRendering(false);
+		if (obj->getName() == "puerta4_open.obj")  obj->changeRendering(false);
 	}
 
 	// “Spawn” al centre
@@ -1865,7 +2036,7 @@ void ActualitzaMatapatos(float dt)
 		//   → es mou més ràpid i recorre més espai
 		// ─────────────────────────────────────────────
 		if (numVius == 1) {
-			speed *= 2.0f;   // més ràpid
+			speed *= 1.5f;   // més ràpid
 			ampX *= 1.2f;   // més recorregut horitzontal
 			ampY *= 1.1f;   // una mica més de moviment vertical
 		}
@@ -1895,9 +2066,14 @@ void ActualitzaMatapatos(float dt)
 			g_PuntsMatapatos, g_PuntsObjectiuMatapatos);
 
 		g_MatapatosSuperat = false;  // seguim sense haver-lo superat
+
+		// 💀 Animació de perdre matapatos (Animation3)
+		StartHandAnimation(3);
+
 		AturaMatapatos();            // torna a OFF i reactiva WASD
 		return;
 	}
+
 
 	// 2.2) Si ja no queda cap pato viu -> VICTÒRIA
 	if (!algunViu) {
@@ -1922,9 +2098,14 @@ void ActualitzaMatapatos(float dt)
 			"[MATAPATOS] Tots els patos abatuts: VICTÒRIA (%d punts)\n",
 			g_PuntsMatapatos);
 
-		// passa a OFF però com g_MatapatosSuperat = true no es reseteja res
+		// 🏆 1) Animació de GUANYAR MATAPATOS (Animation4)
+		// 🪓 2) Quan acabi, automàticament farà l’Animation5 (destral)
+		StartHandAnimation(4);
+		QueueHandAnimation(5);
+
 		AturaMatapatos();
 	}
+	
 }
 
 
@@ -1942,6 +2123,10 @@ void ProcessaDisparMatapatos(GLFWwindow* window)
 	if (g_EstatMatapatos != EstatMatapatos::JUGANT)
 	{
 		g_MouseEsqPrevMatapatos = false;
+		return;
+	}
+
+	if (g_HandPlaying) {
 		return;
 	}
 
@@ -1978,6 +2163,9 @@ void ProcessaDisparMatapatos(GLFWwindow* window)
 	if (!flankClickMouse && !flankClickPad)
 		return;
 
+	StartHandAnimation(2);
+	PlaySoundOnce(ID_GUN);
+
 	// ─────────────────────────────────────────────
 	// 3) Construir raig des de la càmera FPV
 	// ─────────────────────────────────────────────
@@ -2010,7 +2198,7 @@ void ProcessaDisparMatapatos(GLFWwindow* window)
 			haEncertat = true;
 
 			PlaySoundOnce(ID_QUACK);
-			StartHandAnimation(MATAPATOS_HIT_HAND_ANIM);
+			
 
 			fprintf(stderr, "[MATAPATOS] HIT! Punts = %d\n", g_PuntsMatapatos);
 			break;  // només un pato per tret
@@ -2633,8 +2821,8 @@ void InitGL()
 	// ───────────────────────────────────────────────────────────────────────
 	// ARRANQUE DIRECTE: shaders per defecte (Phong + ObraDinn) i FPV ON
 	// ───────────────────────────────────────────────────────────────────────
-	ApplyPhongObraDinnDefaults();
-	EnterFPV();
+	//ApplyPhongObraDinnDefaults();
+	//EnterFPV();
 	//g_FPVInitApplied = true;
 	//g_FPV = true;               
 
@@ -2695,11 +2883,11 @@ void InitGL()
 	}
 
 	// Mans Hylics multi-anim (0..9)
-	InitHandQuad();       // crea el quad HUD
+	//InitHandQuad();       // crea el quad HUD
 	//InitHandAnimations(); // carrega les sheets Animation0..9
 	g_HandsProg = CompileAndLink(".\\shaders\\hands.vert", ".\\shaders\\hands.frag");
 
-	InitAigua();
+	//InitAigua();
 	g_AiguaProg = CompileAndLink(".\\shaders\\water.vert", ".\\shaders\\water.frag");
 
 	// Mapa de les palanques (pista planta baixa)
@@ -2715,8 +2903,8 @@ void InitGL()
 
 
 	// Minijoc Matapatos
-	InitMatapatos();
-	InitMatapatosGeometry();
+	//InitMatapatos();
+	//InitMatapatosGeometry();
 
 	g_TimePrev = glfwGetTime();
 }
@@ -2994,6 +3182,32 @@ void FPV_UpdateCamera(GLFWwindow* window, float dt)
 }
 
 
+void ToggleFlashlightWithAnim()
+{
+	// Si ja hi ha una seqüència en marxa, ignorem nous toggles
+	if (g_FlashAnimState != FlashlightAnimState::NONE)
+		return;
+
+	// Opcional: no comencem seqüència si ja hi ha una animació de mans
+	if (g_HandPlaying)
+		return;
+
+	if (!g_HeadlightEnabled) {
+		// Estava OFF → volem encendre: 9 (cerilla) → 7 (llanterna) → ON
+		g_FlashAnimState = FlashlightAnimState::TURNING_ON;
+		StartHandAnimation(9);   // Animation9 - Encender cerilla
+		PlaySoundOnce(ID_FLASH_ON);
+		fprintf(stderr, "[FPV] Llanterna: inici seqüència ON (9->7)\n");
+	}
+	else {
+		// Estava ON → volem apagar: 8 → OFF
+		g_FlashAnimState = FlashlightAnimState::TURNING_OFF;
+		StartHandAnimation(8);   // Animation8 - Linterna apagar
+		PlaySoundOnce(ID_FLASH_OFF);
+		fprintf(stderr, "[FPV] Llanterna: inici seqüència OFF (8)\n");
+	}
+}
+
 
 void FPV_UpdateMovement(GLFWwindow* window, float dt)
 {
@@ -3001,6 +3215,16 @@ void FPV_UpdateMovement(GLFWwindow* window, float dt)
 	if (g_InventariObert) return;
 	if (g_MapaPalanquesObrit) return;
 	if (cofre_on) return;
+
+	bool handBlocking = false;
+	if (g_HandPlaying && (g_CurrentHandAnim == 12 || g_CurrentHandAnim == 14))
+	{
+		handBlocking = true;
+	}
+
+	// Si hi ha alguna cosa que ha de bloquejar el moviment, sortim
+	if (g_InventariObert || g_MapaPalanquesObrit || cofre_on || handBlocking)
+		return;
 
 	// ── Direcció de mirada base (calculada a UpdateCamera) ──────────────────
 	// ── Direcció de mirada base (calculada a UpdateCamera) ──────────────────
@@ -3034,10 +3258,37 @@ void FPV_UpdateMovement(GLFWwindow* window, float dt)
 
 	// ── Llanterna (tecla F) ─────────────────────────────────────────────────
 	const bool fDown = glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS;
-	if (g_FPV && fDown && !g_FKeyPrev)
-		g_HeadlightEnabled = !g_HeadlightEnabled;
-
+	bool fJustPressed = (g_FPV && fDown && !g_FKeyPrev);
 	g_FKeyPrev = fDown;
+
+	if (fJustPressed)
+	{
+		// Si ja estem en una seqüència de llanterna, ignorem el nou input
+		if (g_FlashAnimState == FlashlightAnimState::NONE && !g_HandPlaying)
+		{
+			if (!g_HeadlightEnabled)
+			{
+				// Estava apagada → seqüència per encendre: 9 (cerilla) → 7 (linterna)
+				g_FlashAnimState = FlashlightAnimState::TURNING_ON;
+				StartHandAnimation(9);
+				QueueHandAnimation(7);
+				fprintf(stderr, "[FLASH] Inici seqüència TURNING_ON (9->7)\n");
+				PlaySoundOnce(ID_FLASH_ON);
+			}
+			else
+			{
+				// Estava encesa → seqüència per apagar: 8
+				g_FlashAnimState = FlashlightAnimState::TURNING_OFF;
+				StartHandAnimation(8);
+				g_QueuedHandAnim = -1;
+				fprintf(stderr, "[FLASH] Inici seqüència TURNING_OFF (8)\n");
+				PlaySoundOnce(ID_FLASH_OFF);
+			}
+		}
+	}
+
+
+
 
 	// ── Sprint ──────────────────────────────────────────────────────────────
 	bool gamepadSprint = (g_Pad.connected && g_Pad.lt > 0.5f); // LT apretat
@@ -3074,7 +3325,7 @@ void FPV_UpdateMovement(GLFWwindow* window, float dt)
 	{
 		moveDir = glm::normalize(moveDir);
 		glm::vec3 nextPos = g_FPVPos + moveDir * currentSpeed * dt;
-			CheckPlayerSlidingCollisionNew(nextPos, FPV_RADIUS, g_FPVPos, g_playerHeight, vHitboxOBJ);
+		CheckPlayerSlidingCollisionNew(nextPos, FPV_RADIUS, g_FPVPos, g_playerHeight, vHitboxOBJ);
 	}
 
 	// ── Pasos (tu sistema complet) ─────────────────────────────────────────
@@ -3265,6 +3516,37 @@ void FPV_UpdateMovement(GLFWwindow* window, float dt)
 				{
 					g_InteraccioDisponible = true; g_InteraccioContext = TipusInteraccioContext::COFRE_CODI;
 				}
+
+				if (joc_quadres_finalitzat && !portes_obertes[3]) //pattata
+				{
+					if (dinsZona3D(g_FPVPos, g_PosPortaMitjaCapAbaix, g_RadiPortaMitjaCapAbaix, halfH))
+					{
+						g_InteraccioDisponible = true; g_InteraccioContext = TipusInteraccioContext::PORTA_CAPABAIX;
+					}
+				}
+
+				if (joc_quadres_finalitzat && !portes_obertes[2]) //pattata
+				{
+					if (dinsZona3D(g_FPVPos, g_PosPortaMitjaCapAdalt, g_RadiPortaMitjaCapAdalt, halfH))
+					{
+						g_InteraccioDisponible = true; g_InteraccioContext = TipusInteraccioContext::PORTA_CAPADALT;
+					}
+				}
+				if (joc_quadres_finalitzat && !portes_obertes[1]) //pattata
+				{
+					if (dinsZona3D(g_FPVPos, g_PosPortaSuperiorEntrada, g_RadiPortaSuperiorEntrada, halfH))
+					{
+						g_InteraccioDisponible = true; g_InteraccioContext = TipusInteraccioContext::PORTA_SUPERIOR_ENT;
+					}
+				}
+
+				if (joc_quadres_finalitzat && !portes_obertes[0]) //pattata
+				{
+					if (dinsZona3D(g_FPVPos, g_PosPortaSuperiorSortida, g_RadiPortaSuperiorSortida, halfH))
+					{
+						g_InteraccioDisponible = true; g_InteraccioContext = TipusInteraccioContext::PORTA_SUPERIOR_SURT;
+					}
+				}
 			}
 		}
 	}
@@ -3397,6 +3679,112 @@ void dibuixa_Habitacio()
 // Prototip per poder cridar-la des de OnPaint
 void UpdateGamepadActions(GLFWwindow* window);
 
+//INSPECION INPUTS
+
+void UpdateInspectionInput(GLFWwindow* window, float dt)
+{
+	// --- ZOOM (Teclas W/S simulando rueda) ---
+	// Ajusta la velocidad (10.0f) a tu gusto
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) g_InspectZoom -= 10.0f * dt;
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) g_InspectZoom += 10.0f * dt;
+
+	// Límites del zoom para no atravesar el objeto ni irse al infinito
+	if (g_InspectZoom < 1.0f) g_InspectZoom = 1.0f;
+	if (g_InspectZoom > 30.0f) g_InspectZoom = 30.0f;
+
+	// --- ROTACIÓN (Click Izquierdo + Arrastrar) ---
+	double xpos, ypos;
+	glfwGetCursorPos(window, &xpos, &ypos);
+
+	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
+		if (!g_Dragging) {
+			g_Dragging = true;
+			g_LastMouseX = xpos;
+			g_LastMouseY = ypos;
+		}
+		// Sensibilidad del ratón
+		float sensitivity = 0.01f;
+		float dx = float(xpos - g_LastMouseX);
+		float dy = float(ypos - g_LastMouseY);
+
+		g_InspectRotX += dx * sensitivity;
+		g_InspectRotY += dy * sensitivity;
+	}
+	else {
+		g_Dragging = false;
+	}
+	g_LastMouseX = xpos;
+	g_LastMouseY = ypos;
+}
+
+void dibuixa_Solo_Objeto()
+{
+	glUseProgram(shader_programID);
+
+	auto loc = [&](const char* n) { return glGetUniformLocation(shader_programID, n); };
+
+	// 1. DESACTIVAR EFECTOS RAROS
+	glUniform1i(loc("uObraDinnOn"), GL_FALSE);
+	glUniform1i(loc("textur"), GL_FALSE); // Pon TRUE si tu objeto tiene textura
+
+	// 2. MATERIAL DEL OBJETO (Base blanca neutra para que coja bien la luz)
+	glUniform1i(loc("sw_material"), GL_TRUE);
+	glUniform4f(loc("material.ambient"), 0.1f, 0.1f, 0.1f, 1.0f); // Poco ambiente propio
+	glUniform4f(loc("material.diffuse"), 0.9f, 0.9f, 0.9f, 1.0f); // Difusa alta (color base)
+	glUniform4f(loc("material.specular"), 0.8f, 0.8f, 0.8f, 1.0f); // Brillo fuerte
+	glUniform1f(loc("material.shininess"), 64.0f);                 // Brillo concentrado
+
+	// 3. ILUMINACIÓN "NATURAL" (Estilo Estudio / Sol)
+
+	// A) Luz Ambiental (Relleno): Un gris azulado suave (simula luz del cielo)
+	glUniform4f(loc("LightModelAmbient"), 0.3f, 0.3f, 0.4f, 1.0f);
+
+	// B) Luz Difusa/Especular (El Sol): Un blanco cálido
+	// NOTA: Es posible que tu shader use 'light.diffuse' o 'gl_LightSource[0].diffuse'
+	// Intento usar nombres genéricos, si no va, revisa tu shader.
+	glUniform4f(loc("lightSource.diffuse"), 1.0f, 0.95f, 0.9f, 1.0f); // Luz cálida
+	glUniform4f(loc("lightSource.specular"), 1.0f, 1.0f, 1.0f, 1.0f);  // Reflejo blanco puro
+
+	// C) POSICIÓN DE LA LUZ (CRUCIAL) 
+
+		// Definimos la luz en el "View Space" (relativa a la cámara).
+		// (10, 10, 10) significa que la luz viene de "arriba a la derecha y detrás" de la cámara.
+		// w = 0.0f indica que es una LUZ DIRECCIONAL (como el sol), no un punto.
+	glm::vec4 lightPos = glm::vec4(10.0f, 10.0f, 10.0f, 0.0f);
+	glUniform4fv(loc("lightPosition"), 1, glm::value_ptr(lightPos));
+
+	// Activar cálculo de luces (switches)
+	glUniform4i(loc("sw_intensity"), 1, 1, 1, 0);
+
+
+	// ─────────────────────────────────────────────────────────────
+	// MATRICES Y DIBUJO (Igual que antes)
+	// ─────────────────────────────────────────────────────────────
+	glm::mat4 M = glm::mat4(1.0f);
+
+	// Rotación del objeto
+	M = glm::rotate(M, g_InspectRotY, glm::vec3(1.0f, 0.0f, 0.0f));
+	M = glm::rotate(M, g_InspectRotX, glm::vec3(0.0f, 1.0f, 0.0f));
+
+	glm::mat4 MV = ViewMatrix * M;
+	glm::mat4 NM = glm::transpose(glm::inverse(MV));
+
+	glUniformMatrix4fv(loc("modelMatrix"), 1, GL_FALSE, glm::value_ptr(M));
+	glUniformMatrix4fv(loc("viewMatrix"), 1, GL_FALSE, glm::value_ptr(ViewMatrix));
+	glUniformMatrix4fv(loc("projectionMatrix"), 1, GL_FALSE, glm::value_ptr(ProjectionMatrix));
+	glUniformMatrix4fv(loc("normalMatrix"), 1, GL_FALSE, glm::value_ptr(NM));
+
+	dibuixa_EscenaGL(
+		shader_programID, eixos, eixos_Id, grid, hgrid,
+		objecte, col_obj, sw_material,
+		textura, texturesID, textura_map, tFlag_invert_Y,
+		npts_T, PC_t, pas_CS, sw_Punts_Control, dibuixa_TriedreFrenet,
+		vObOBJ, ViewMatrix, M
+	);
+
+	glUseProgram(0);
+}
+
 
 
 // OnPaint: Funció de dibuix i visualització en frame buffer del frame
@@ -3413,149 +3801,122 @@ void OnPaint(GLFWwindow* window)
 {
 	const bool useSobel = g_SobelOn;
 
-	// Temps i dt
+	// 1. Tiempo y Delta Time
 	const double now = glfwGetTime();
 	const float  dt = float(now - g_TimePrev);
 	g_TimePrev = now;
 
-	// ── Llegim estat del GAMEPAD (axes + botons) ───────────────────────────
-	// Si la teva funció es diu UpdateGamepad(dt), aquesta línia està bé.
+	// 2. Inputs y Lógica Global
 	UpdateGamepad(dt);
-
-	// Animacions de mans + lògica del Matapatos
 	ActualitzaAnimacioMans(dt);
 	ActualitzaMatapatos(dt);
+	UpdateGamepadActions(window); // Acciones de botones
 
-	// Estil d’UI (només ImGui; no afecta GL)
-	if ((c_fons.r < 0.5f) || (c_fons.g < 0.5f) || (c_fons.b < 0.5f))
-		ImGui::StyleColorsLight();
-	else
-		ImGui::StyleColorsDark();
+	// 3. Estilo UI
+	if ((c_fons.r < 0.5f) || (c_fons.g < 0.5f) || (c_fons.b < 0.5f)) ImGui::StyleColorsLight();
+	else ImGui::StyleColorsDark();
 
-	// ────────────────────────────────────────────────────────────────────────
-	// 1) ESCENA NORMAL → BACKBUFFER
-	// ────────────────────────────────────────────────────────────────────────
+	// ------------------------------------------------------------------------
+	// 4. PREPARAR RENDERIZADO (LIMPIEZA GENERAL)
+	// ------------------------------------------------------------------------
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glViewport(0, 0, w, h);
+	glViewport(0, 0, w, h); // <--- IMPORTANTE: Restaurar tamaño ventana
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 	glDisable(GL_SCISSOR_TEST);
 	glDisable(GL_BLEND);
 
-	glClearColor(c_fons.r, c_fons.g, c_fons.b, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	// Color de fondo según modo
+	if (g_Inspecciona) glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Negro
+	else glClearColor(c_fons.r, c_fons.g, c_fons.b, 1.0f);   // Normal
 
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	g_SobelMaskPass = false;
 	glUseProgram(shader_programID);
 
-	// ─ Càmera FPV (si escau)
-	if (g_FPV) {
-		// Projecció a mida de finestra
+	// ------------------------------------------------------------------------
+	// 5. CÁLCULO DE MATRICES (AQUÍ ESTÁ LA CORRECCIÓN CLAVE)
+	// ------------------------------------------------------------------------
+
+	// Declaramos 'vpv' AQUÍ ARRIBA para evitar el error C2361
+	GLdouble vpv[3] = { 0.0, 0.0, 1.0 };
+
+	// Forzamos el cálculo de la Proyección Perspectiva por defecto con (w, h)
+	// Así, si entramos en 'case PERSPECT' o 'g_Inspecciona', la matriz ya está limpia.
+	if (projeccio == PERSPECT || g_Inspecciona || g_FPV) {
 		ProjectionMatrix = Projeccio_Perspectiva(shader_programID, 0, 0, w, h, OPV.R);
-
-		// INPUT + FÍSICA: teclat + GAMEPAD
-		FPV_UpdateCamera(window, dt);
-		FPV_UpdateMovement(window, dt);
-
-		// Vista des de FPV
-		FPV_ApplyView();
-
-		// Actualitzar AABBs dels props (col·lisions / debug)
-		for (auto& p : g_Props)
-			p.hitbox = GetAABBFromModelMatrix(p.M);
 	}
-
-	switch (projeccio)
-	{
-	case AXONOM:
-		configura_Escena();
-		dibuixa_Escena();
-		break;
-
-	case ORTO:
+	else if (projeccio == ORTO) {
 		ProjectionMatrix = Projeccio_Orto();
-		ViewMatrix = Vista_Ortografica(shader_programID, 0, OPV.R, c_fons, col_obj, objecte, mida, pas,
-			front_faces, oculta, test_vis, back_line,
-			ilumina, llum_ambient, llumGL, ifixe, ilum2sides,
-			eixos, grid, hgrid);
-		configura_Escena();
-		dibuixa_Escena();
-		break;
-
-	case PERSPECT:
-		if (act_state == GameState::INSPECTING) 
-		//if (g_Inspecciona) 
-		{
-			ProjectionMatrix = Projeccio_Perspectiva(shader_programID, 0, 0, w, h, OPV.R);
-
-			GLdouble vpv[3] = { 0.0, 0.0, 1.0 };
-			if (camera == CAM_ESFERICA) {
-				n[0] = 0; n[1] = 0; n[2] = 0;
-				ViewMatrix = Vista_Esferica(shader_programID, OPV, Vis_Polar, pan, tr_cpv, tr_cpvF, c_fons, col_obj, objecte, mida, pas,
-					front_faces, true, test_vis, back_line,
-					ilumina, llum_ambient, llumGL, ifixe, ilum2sides,
-					eixos, grid, hgrid);
-			}
-			else if (camera == CAM_NAVEGA) {
-				if (Vis_Polar == POLARZ) { vpv[0] = 0; vpv[1] = 0; vpv[2] = 1; }
-				else if (Vis_Polar == POLARY) { vpv[0] = 0; vpv[1] = 1; vpv[2] = 0; }
-				else { vpv[0] = 1; vpv[1] = 0; vpv[2] = 0; }
-
-				ViewMatrix = Vista_Navega(shader_programID, opvN, n, vpv, pan, tr_cpv, tr_cpvF, c_fons, col_obj, objecte, true, pas,
-					front_faces, oculta, test_vis, back_line,
-					ilumina, llum_ambient, llumGL, ifixe, ilum2sides,
-					eixos, grid, hgrid);
-			}
-			else {
-				ViewMatrix = Vista_Geode(shader_programID, OPV_G, Vis_Polar, pan, tr_cpv, tr_cpvF, c_fons, col_obj, objecte, mida, pas,
-					front_faces, oculta, test_vis, back_line,
-					ilumina, llum_ambient, llumGL, ifixe, ilum2sides,
-					eixos, grid, hgrid);
-			}
-		}
-		configura_Escena();
-		dibuixa_Escena();
-		break;
-
-	default:
-		break;
 	}
 
-	glUseProgram(0);
-	//DibuixaRay();
+	// ------------------------------------------------------------------------
+	// 6. DIBUJAR ESCENA SEGÚN MODO
+	// ------------------------------------------------------------------------
 
-	// ────────────────────────────────────────────────────────────────────────
-	// 2) SOBEL: FBO amb PRE-PASS DE PROFUNDITAT + MÀSCARA D’OBJECTE
-	// ────────────────────────────────────────────────────────────────────────
-	if (useSobel)
+	if (g_Inspecciona)
 	{
-		// 2.0) Preparació FBO
-		glBindFramebuffer(GL_FRAMEBUFFER, g_SobelFBO);
-		glViewport(0, 0, g_FBOW, g_FBOH);
-		glEnable(GL_DEPTH_TEST);
-		glDepthFunc(GL_LESS);
-		glDisable(GL_SCISSOR_TEST);
-		glDisable(GL_BLEND);
+		// === MODO INSPECCIÓN ===
 
-		glClearColor(0, 0, 0, 1);
+		// 1. Limpieza Fondo
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// 2.1) PRE-PASS DEPTH: sala + props a profunditat (color off)
-		glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-		glDepthMask(GL_TRUE);
+		// 2. Inputs
+		UpdateInspectionInput(window, dt);
 
-		// Mateixa càmera que al pas 1; per PERSPECT cal projecció a mida del FBO
-		if (projeccio == PERSPECT) {
-			ProjectionMatrix = Projeccio_Perspectiva(shader_programID, 0, 0, g_FBOW, g_FBOH, OPV.R);
-			if (g_FPV) {
-				FPV_ApplyView();
-			}
-			else {
-				GLdouble vpv[3] = { 0.0, 0.0, 1.0 };
+		// 3. Proyección
+		ProjectionMatrix = Projeccio_Perspectiva(shader_programID, 0, 0, w, h, OPV.R);
+
+		// 4. VIEW MATRIX (CÁMARA FIJA)
+		// Solo trasladamos hacia atrás para el Zoom. NO rotamos la cámara.
+		glm::mat4 view = glm::mat4(1.0f);
+		view = glm::translate(view, glm::vec3(0.0f, 0.0f, -g_InspectZoom));
+
+		ViewMatrix = view;
+
+		// 5. Enviar matrices
+		glUniformMatrix4fv(glGetUniformLocation(shader_programID, "viewMatrix"), 1, GL_FALSE, glm::value_ptr(ViewMatrix));
+		glUniformMatrix4fv(glGetUniformLocation(shader_programID, "projectionMatrix"), 1, GL_FALSE, glm::value_ptr(ProjectionMatrix));
+
+		// 6. DIBUJAR (El objeto rotará dentro de esta función)
+		dibuixa_Solo_Objeto();
+	}
+	else
+	{
+		// === MODO JUEGO NORMAL ===
+
+		// Si estamos en FPV, sobreescribimos la lógica
+		if (g_FPV) {
+			FPV_UpdateCamera(window, dt);
+			FPV_UpdateMovement(window, dt);
+			FPV_ApplyView(); // Esto calcula y envía la ViewMatrix interna
+
+			// Actualizar hitboxes
+			for (auto& p : g_Props) p.hitbox = GetAABBFromModelMatrix(p.M);
+		}
+		else
+		{
+			// Si NO es FPV, calculamos la ViewMatrix según el tipo de cámara
+			switch (projeccio)
+			{
+			case AXONOM:
+				// Axonometrica no usa ViewMatrix estándar normalmente, configura escena directo
+				break;
+
+			case ORTO:
+				ViewMatrix = Vista_Ortografica(shader_programID, 0, OPV.R, c_fons, col_obj, objecte, mida, pas,
+					front_faces, oculta, test_vis, back_line,
+					ilumina, llum_ambient, llumGL, ifixe, ilum2sides,
+					eixos, grid, hgrid);
+				break;
+
+			case PERSPECT:
+				// Aquí usamos la variable 'vpv' declarada arriba (sin re-declararla)
 				if (camera == CAM_ESFERICA) {
 					n[0] = 0; n[1] = 0; n[2] = 0;
 					ViewMatrix = Vista_Esferica(shader_programID, OPV, Vis_Polar, pan, tr_cpv, tr_cpvF, c_fons, col_obj, objecte, mida, pas,
-						front_faces, oculta, test_vis, back_line,
+						front_faces, true, test_vis, back_line,
 						ilumina, llum_ambient, llumGL, ifixe, ilum2sides,
 						eixos, grid, hgrid);
 				}
@@ -3575,67 +3936,72 @@ void OnPaint(GLFWwindow* window)
 						ilumina, llum_ambient, llumGL, ifixe, ilum2sides,
 						eixos, grid, hgrid);
 				}
+				break;
 			}
 		}
-		else if (projeccio == ORTO) {
-			ProjectionMatrix = Projeccio_Orto();
-			ViewMatrix = Vista_Ortografica(shader_programID, 0, OPV.R, c_fons, col_obj, objecte, mida, pas,
-				front_faces, oculta, test_vis, back_line,
-				ilumina, llum_ambient, llumGL, ifixe, ilum2sides,
-				eixos, grid, hgrid);
-		}
-		else {
-			// AXONOM / altres
-			configura_Escena();
-		}
 
-		// Dibuixa sala + props (sense objecte) per emplenar el Z del FBO
-		{
-			glUseProgram(shader_programID);
+		// Finalmente dibujamos la escena normal
+		configura_Escena();
+		dibuixa_Escena();
+	}
 
-			// Matrius (M = identitat)
-			const glm::mat4 M(1.0f);
-			const glm::mat4 MV = ViewMatrix * M;
-			const glm::mat4 NM = glm::transpose(glm::inverse(MV));
-			glUniformMatrix4fv(glGetUniformLocation(shader_programID, "modelMatrix"), 1, GL_FALSE, glm::value_ptr(M));
-			glUniformMatrix4fv(glGetUniformLocation(shader_programID, "viewMatrix"), 1, GL_FALSE, glm::value_ptr(ViewMatrix));
-			glUniformMatrix4fv(glGetUniformLocation(shader_programID, "projectionMatrix"), 1, GL_FALSE, glm::value_ptr(ProjectionMatrix));
-			glUniformMatrix4fv(glGetUniformLocation(shader_programID, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(NM));
+	glUseProgram(0);
 
-			// Cull interior off (volem veure cares des de dins)
-			const GLboolean cullWasEnabled = glIsEnabled(GL_CULL_FACE);
-			glDisable(GL_CULL_FACE);
+	// ------------------------------------------------------------------------
+	// 7. EFECTO SOBEL (Post-Proceso)
+	// ------------------------------------------------------------------------
+	// NOTA: Desactivamos Sobel si estamos inspeccionando para evitar conflictos visuales simples
+	if (useSobel && !g_Inspecciona)
+	{
+		// --- FASE 1: DIBUJAR AL FBO ---
+		glBindFramebuffer(GL_FRAMEBUFFER, g_SobelFBO);
+		glViewport(0, 0, g_FBOW, g_FBOH); // <--- Aquí cambiamos a resolución pequeña
+		glEnable(GL_DEPTH_TEST);
+		glClearColor(0, 0, 0, 1);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-			if (g_ShowRoom) {
-				dibuixa_Habitacio();
-				DrawProps(shader_programID);
+		// Recalcular Proyección para el tamaño del FBO (g_FBOW, g_FBOH)
+		if (projeccio == PERSPECT || g_FPV) {
+			ProjectionMatrix = Projeccio_Perspectiva(shader_programID, 0, 0, g_FBOW, g_FBOH, OPV.R);
+			if (g_FPV) FPV_ApplyView();
+			// Si no es FPV, la ViewMatrix ya está calculada del paso anterior, la reutilizamos.
+			// Pero si es PERSPECT normal, hay que asegurar que la ViewMatrix se envíe con la nueva Proyección
+			else {
+				// Reenviar matrices al shader porque ProjectionMatrix cambió
+				glUseProgram(shader_programID);
+				glUniformMatrix4fv(glGetUniformLocation(shader_programID, "projectionMatrix"), 1, GL_FALSE, glm::value_ptr(ProjectionMatrix));
+				glUniformMatrix4fv(glGetUniformLocation(shader_programID, "viewMatrix"), 1, GL_FALSE, glm::value_ptr(ViewMatrix));
 			}
-
-			if (cullWasEnabled) glEnable(GL_CULL_FACE);
-			glUseProgram(0);
 		}
 
-		// 2.2) MÀSCARA DE L’OBJECTE (color blanc), amb test de profunditat actiu
-		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+		// 1. Dibuja Fondo (Depth Only)
+		glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 		glDepthMask(GL_TRUE);
 
 		glUseProgram(shader_programID);
+		const glm::mat4 M(1.0f); // Identidad para la habitación
+		glUniformMatrix4fv(glGetUniformLocation(shader_programID, "modelMatrix"), 1, GL_FALSE, glm::value_ptr(M));
+
+		// Desactiva CULL FACE temporalmente para dibujar paredes interiores
+		GLboolean cullWas = glIsEnabled(GL_CULL_FACE);
+		glDisable(GL_CULL_FACE);
+		if (g_ShowRoom) { dibuixa_Habitacio(); DrawProps(shader_programID); }
+		if (cullWas) glEnable(GL_CULL_FACE);
+
+		// 2. Dibuja Máscara Objeto (Color Blanco)
+		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 		glUniform1i(glGetUniformLocation(shader_programID, "uSobelMaskPass"), GL_TRUE);
 		g_SobelMaskPass = true;
 
-		configura_Escena();
-		dibuixa_Escena();
+		configura_Escena(); // Recupera configuración del objeto
+		dibuixa_Escena();   // Dibuja objeto
 
-		// Desactiva màscara
 		g_SobelMaskPass = false;
 		glUniform1i(glGetUniformLocation(shader_programID, "uSobelMaskPass"), GL_FALSE);
-		glUseProgram(0);
 
-		// ────────────────────────────────────────────────────────────────────
-		// 3) COMPOSICIÓ: QUAD del FBO sobre el backbuffer (alpha blend)
-		// ────────────────────────────────────────────────────────────────────
+		// --- FASE 2: PINTAR EL QUAD EN PANTALLA ---
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		glViewport(0, 0, w, h);
+		glViewport(0, 0, w, h); // <--- IMPORTANTE: Restaurar a pantalla completa
 		glDisable(GL_DEPTH_TEST);
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -3655,17 +4021,10 @@ void OnPaint(GLFWwindow* window)
 		glEnable(GL_DEPTH_TEST);
 	}
 
-	// ────────────────────────────────────────────────────────────────────────
-	// ACCIONS DE BOTONS DEL GAMEPAD (X,Y,B,START,LB) → E/I/ESC/...
-	// ────────────────────────────────────────────────────────────────────────
-	UpdateGamepadActions(window);
-
-	// HUD de la mà + barra d'estat
+	// 8. HUD FINAL
 	dibuixa_Mano();
-
 	if (statusB) Barra_Estat();
 }
-
 
 
 
@@ -4023,6 +4382,58 @@ void Barra_Estat()
 	}
 }
 
+// Retorna el text correcte segons si hi ha mando o no
+const char* GetInteractKeyLabelShort()
+{
+	// Curtet, només la tecla/botó
+	return g_Pad.connected ? "X" : "E";
+}
+
+const char* GetInteractKeyFullSentence()
+{
+	// Frase tipus HUD genèric
+	return g_Pad.connected
+		? "Prem el botó X per interactuar"
+		: "Prem la tecla E per interactuar";
+}
+
+void DibuixaHUDCofre()
+{
+	if (cofre_on)
+		renderCofreContrasena(window);
+
+	if (joc_quadres_finalitzat && !g_CofreItemAfegit)
+	{
+		AfegirItemInventari("clau_quadres", "Clau rovellada",
+			"Una clau rovellada que has guanyat al minijoc dels quadres simbolics.");
+
+		for (COBJModel* obj : vObOBJ)
+		{
+			if (obj->getName() == "cofre_arriba_cerrado.obj") obj->changeRendering(false);
+			if (obj->getName() == "cofre_arriba_abierto.obj") obj->changeRendering(true);
+		}
+
+		StartHandAnimation(1);
+		g_CofreItemAfegit = true;
+		idx_clue = 2;
+
+		g_ShowReward = true;
+		g_RewardStartTime = glfwGetTime(); // temps actual
+	}
+	if (g_ShowReward)
+	{
+		double elapsed = glfwGetTime() - g_RewardStartTime;
+		if (elapsed < g_RewardDuration)
+		{
+			ImGuiIO& io = ImGui::GetIO();
+			claimRewards(io, 0);
+		}
+		else
+			g_ShowReward = false; // ja ha passat el temps
+	}
+}
+
+
 /* ────────────────────────────────────────────────────────────────────────── */
 /*                              MENÚS ImGui                                  */
 /* ────────────────────────────────────────────────────────────────────────── */
@@ -4033,11 +4444,16 @@ void draw_scene()
 
 	g_UsePadMouse = (cofre_on || g_MapaPalanquesObrit || g_InventariObert);
 
+	ImGuiIO& io = ImGui::GetIO();
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;   
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; 
+
 	if (g_UsePadMouse)
 	{
 		UpdatePadMouseForImGui(window);
 	}
 	ImGui::NewFrame();
+	DibuixaHUDCofre();
 
 
 	DibuixaCrosshair();
@@ -4052,40 +4468,6 @@ void draw_scene()
 	renderCronometre(window);
 	renderInstruccions(window);
 	renderCandelabre(window, g_HeadlightEnabled);
-
-	// ---------- Minijoc del cofre amb codi (HUD ImGui) ----------
-	if (cofre_on)
-	{
-		renderCofreContrasena(window);
-
-		// Si el minijoc dels quadres s'ha completat dins del cofre,
-		// afegim la clau a l'inventari només una vegada.
-		if (joc_quadres_finalitzat && !g_CofreItemAfegit)
-		{
-			AfegirItemInventari(
-				"clau_quadres",
-				"Clau rovellada Verda",
-				"Una clau rovellada que has guanyat al minijoc dels quadres simbòlics."
-			);
-
-			for (COBJModel* obj : vObOBJ) //patata; solucion provisional
-			{
-				if (obj->getName() == "cofre_arriba_cerrado.obj")
-				{
-					obj->changeRendering(false);
-				}
-
-				if (obj->getName() == "cofre_arriba_abierto.obj")
-				{
-					obj->changeRendering(true);
-				}
-			}
-
-			g_CofreItemAfegit = true;
-			idx_clue = 2;
-		}
-	}
-
 
 
 	ImGui::Render();
@@ -6879,6 +7261,7 @@ void OnShaderPBinaryRead()
 /*                            FI MENUS ImGui                                 */
 /* ------------------------------------------------------------------------- */
 
+
 // ─────────────────────────────────────────────────────────────
 // Helper: acció d'interacció (equivalent a tecla E)
 // ─────────────────────────────────────────────────────────────
@@ -7017,7 +7400,52 @@ void HandleInteract(GLFWwindow* window)
 			fprintf(stderr, "[ESCAPE] Has pujat a la barca i has escapat del vaixell!\n");
 			// Aquí podries canviar act_state a una escena final, etc.
 			break;
+		case TipusInteraccioContext::PORTA_CAPABAIX:
+		{
+			portes_obertes[3] = true;
+			for (COBJModel* obj : vObOBJ)
+			{
+				if (obj->getName() == "puerta4.obj") obj->changeRendering(false);
+				if (obj->getName() == "puerta4_open.obj") obj->changeRendering(true);
+			}
+			
+			StartHandAnimation(10);
 
+		}
+		break;
+
+		case TipusInteraccioContext::PORTA_CAPADALT:
+		{
+			portes_obertes[2] = true;
+			for (COBJModel* obj : vObOBJ)
+			{
+				if (obj->getName() == "puerta1.obj") obj->changeRendering(false);
+				if (obj->getName() == "puerta1_open.obj") obj->changeRendering(true);
+			}
+			fprintf(stderr, "[Porta Obertaaa mitja cap a dalt]!\n");
+		}
+		break;
+		case TipusInteraccioContext::PORTA_SUPERIOR_ENT:
+		{
+			portes_obertes[1] = true;
+			for (COBJModel* obj : vObOBJ)
+			{
+				if (obj->getName() == "puerta3.obj") obj->changeRendering(false);
+				if (obj->getName() == "puerta3_open.obj") obj->changeRendering(true);
+			}
+		}
+		break;
+
+		case TipusInteraccioContext::PORTA_SUPERIOR_SURT:
+		{
+			portes_obertes[0] = true;
+			for (COBJModel* obj : vObOBJ)
+			{
+				if (obj->getName() == "puerta2.obj") obj->changeRendering(false);
+				if (obj->getName() == "puerta2_open.obj") obj->changeRendering(true);
+			}
+		}
+		break;
 		default:
 			break;
 		}
@@ -7099,6 +7527,41 @@ void HandleToggleInventory(GLFWwindow* window)
 	fprintf(stderr, "[INVENTARI] %s\n", g_InventariObert ? "Obert" : "Tancat");
 }
 
+void ToggleMapaPalanquesAmbMans(GLFWwindow* window)
+{
+	// OBRIR quadern de palanques
+	if (!g_MapaPalanquesObrit)
+	{
+		// Si ja hi ha una animació de mans en marxa, millor no fer res
+		if (g_HandPlaying)
+			return;
+
+		// Primer fem l'animació d'OBRIR quadern...
+		g_PendingMapaOpenAfterAnim = true;   // quan acabi, mostrarem el quadern
+		StartHandAnimation(HAND_ANIM_MAPA_OBRIR);
+
+		// Opcional: pots bloquejar moviment, ratolí, etc. si vols
+		// g_FVP_move = false;
+		return;
+	}
+
+	// TANCAR quadern de palanques
+	else
+	{
+		// 1) Tanquem immediatament la imatge, com fins ara
+		g_MapaPalanquesObrit = false;
+
+		// 2) I tot seguit fem l'animació de TANCAR quadern
+		if (!g_HandPlaying)
+			StartHandAnimation(HAND_ANIM_MAPA_TANCAR);
+
+		// Aquí ja tornes a permetre moviment si tocava
+		// g_FVP_move = true;
+	}
+}
+
+
+
 
 
 // ─────────────────────────────────────────────────────────────
@@ -7153,9 +7616,7 @@ void UpdateGamepadActions(GLFWwindow* window)
 		bool lbJustPressed = (g_Pad.btnLB && !g_PadPrev.btnLB);
 		if (lbJustPressed && g_FPV)
 		{
-			g_HeadlightEnabled = !g_HeadlightEnabled;
-			fprintf(stderr, "[FPV] Llanterna %s (LB)\n",
-				g_HeadlightEnabled ? "ON" : "OFF");
+			ToggleFlashlightWithAnim();
 		}
 	}
 	else if (act_state == GameState::MENU)
@@ -7241,7 +7702,7 @@ void OnKeyDown(GLFWwindow* window, int key, int scancode, int action, int mods)
 
 			if (key == GLFW_KEY_B)
 			{
-				g_RoomYMin = 7.0f;
+				g_RoomYMin = 6.6f;
 				g_RoomYMax = g_RoomYMin + g_RoomHeight;
 
 				g_FPVPos.x = 0.0f;
@@ -7327,26 +7788,45 @@ void OnKeyDown(GLFWwindow* window, int key, int scancode, int action, int mods)
 			}
 
 			// 1) Si el mapa de palanques està obert → tancar-lo
+// 1) Si el mapa de palanques està obert → tancar-lo
 			if (g_MapaPalanquesObrit)
 			{
+				// Tanquem la imatge com sempre
 				g_MapaPalanquesObrit = false;
 				FPV_SetMouseCapture(true);
 				fprintf(stderr, "[MAPA PALANQUES] Tancant mapa\n");
+
+				// 👉 Lançar animació de tancar quadern (11) si les mans estan lliures
+				if (!g_HandPlaying)
+				{
+					StartHandAnimation(HAND_ANIM_MAPA_TANCAR);
+					PlaySoundOnce(ID_CLOSE_BOOK);
+				}
+					
+
 				return;
 			}
 
 			// 2) Si el document del terra és interactuable → obrir el mapa
 			if (g_MapaPalanquesInteractuable && !g_MapaPalanquesObrit)
 			{
-				g_MapaPalanquesObrit = true;
-				g_MapaPalanquesVist = true;
+				// Si ja hi ha una anim de mans en marxa, no fem res per no tallar-la
+				if (g_HandPlaying)
+					return;
 
 				FPV_SetMouseCapture(false);
 				if (window) {
 					glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 				}
 
-				fprintf(stderr, "[MAPA PALANQUES] Obrint mapa de palanques\n");
+				// 👉 Ara NO obrim el mapa immediatament.
+				// En comptes d'això: marquem que, quan acabi l'animació 12,
+				// s'obrirà el quadern de pistes.
+				g_PendingMapaOpenAfterAnim = true;
+				StartHandAnimation(HAND_ANIM_MAPA_OBRIR);
+				PlaySoundOnce(ID_OPEN_BOOK);
+
+				fprintf(stderr, "[MAPA PALANQUES] Obrint mapa de palanques (després de l'animacio)\n");
 				return;
 			}
 
@@ -7452,6 +7932,55 @@ void OnKeyDown(GLFWwindow* window, int key, int scancode, int action, int mods)
 				case TipusInteraccioContext::ESCAPAR_BARCA:
 					fprintf(stderr, "[ESCAPE] Has pujat a la barca i has escapat del vaixell!\n");
 					break;
+				case TipusInteraccioContext::PORTA_CAPABAIX:
+				{
+					portes_obertes[3] = true;
+					for (COBJModel* obj : vObOBJ)
+					{
+						if (obj->getName() == "puerta4.obj") obj->changeRendering(false);
+						if (obj->getName() == "puerta4_open.obj") obj->changeRendering(true);
+					}
+
+					StartHandAnimation(10);
+				}
+				break;
+
+				case TipusInteraccioContext::PORTA_CAPADALT:
+				{
+					portes_obertes[2] = true;
+					for (COBJModel* obj : vObOBJ)
+					{
+						if (obj->getName() == "puerta1.obj") obj->changeRendering(false);
+						if (obj->getName() == "puerta1_open.obj") obj->changeRendering(true);
+					}
+
+					StartHandAnimation(10);
+				}
+				break;
+				case TipusInteraccioContext::PORTA_SUPERIOR_ENT:
+				{
+					portes_obertes[1] = true;
+					for (COBJModel* obj : vObOBJ)
+					{
+						if (obj->getName() == "puerta3.obj") obj->changeRendering(false);
+						if (obj->getName() == "puerta3_open.obj") obj->changeRendering(true);
+					}
+
+					StartHandAnimation(6);
+				}
+				break;
+
+				case TipusInteraccioContext::PORTA_SUPERIOR_SURT:
+				{
+					portes_obertes[0] = true;
+					for (COBJModel* obj : vObOBJ)
+					{
+						if (obj->getName() == "puerta2.obj") obj->changeRendering(false);
+						if (obj->getName() == "puerta2_open.obj") obj->changeRendering(true);
+					}
+
+					StartHandAnimation(10);
+				}
 
 				default:
 					break;
@@ -10551,27 +11080,36 @@ int main(void)
 	InitAudio();
 
 	// 1. CARGA
-	if (!LoadAudio(MUSIC_FILE, ID_MUSIC))         fprintf(stderr, "[AUDIO] Error loading Music\n");
-	if (!LoadAudio(STEPS_FILE, ID_STEPS))         fprintf(stderr, "[AUDIO] Error loading Steps\n");
-	if (!LoadAudio(ITEM_FILE, ID_ITEM))           fprintf(stderr, "[AUDIO] Error loading Item\n");
-	if (!LoadAudio(STAIRS_FILE, ID_STAIRS))       fprintf(stderr, "[AUDIO] Error loading Stairs\n");
-	if (!LoadAudio(CHEST_FILE, ID_CHEST))         fprintf(stderr, "[AUDIO] Error loading Chest\n");
-	if (!LoadAudio(QUACK_FILE, ID_QUACK))         fprintf(stderr, "[AUDIO] Error loading Quack\n");
-	if (!LoadAudio(DOOR_FILE, ID_DOOR))           fprintf(stderr, "[AUDIO] Error loading Door\n");
-	if (!LoadAudio(FLASH_ON_FILE, ID_FLASH_ON))   fprintf(stderr, "[AUDIO] Error loading Flash ON\n");
-	if (!LoadAudio(FLASH_OFF_FILE, ID_FLASH_OFF)) fprintf(stderr, "[AUDIO] Error loading Flash OFF\n");
+
+	if (!LoadAudio(MUSIC_FILE, ID_MUSIC, 67))         fprintf(stderr, "[AUDIO] Error loading Music\n");
+	if (!LoadAudio(STEPS_FILE, ID_STEPS, 100))         fprintf(stderr, "[AUDIO] Error loading Steps\n");
+	if (!LoadAudio(ITEM_FILE, ID_ITEM, 100))           fprintf(stderr, "[AUDIO] Error loading Item\n");
+	if (!LoadAudio(STAIRS_FILE, ID_STAIRS, 100))       fprintf(stderr, "[AUDIO] Error loading Stairs\n");
+	if (!LoadAudio(CHEST_FILE, ID_CHEST, 100))         fprintf(stderr, "[AUDIO] Error loading Chest\n");
+	if (!LoadAudio(QUACK_FILE, ID_QUACK, 100))         fprintf(stderr, "[AUDIO] Error loading Quack\n");
+	if (!LoadAudio(DOOR_FILE, ID_DOOR, 100))           fprintf(stderr, "[AUDIO] Error loading Door\n");
+	if (!LoadAudio(FLASH_ON_FILE, ID_FLASH_ON, 100))   fprintf(stderr, "[AUDIO] Error loading Flash ON\n");
+	if (!LoadAudio(FLASH_OFF_FILE, ID_FLASH_OFF, 100)) fprintf(stderr, "[AUDIO] Error loading Flash OFF\n");
+	if (!LoadAudio(GUN_FILE, ID_GUN, 80)) fprintf(stderr, "[AUDIO] Error loading Gun\n");
+	if (!LoadAudio(OPEN_BOOK_FILE, ID_OPEN_BOOK, 100)) fprintf(stderr, "[AUDIO] Error loading Open Book\n");
+	if (!LoadAudio(CLOSE_BOOK_FILE, ID_CLOSE_BOOK, 100)) fprintf(stderr, "[AUDIO] Error loading Close Book\n");
+	if (!LoadAudio(MENU_HOVER_FILE, ID_MENU_HOVER, 100)) fprintf(stderr, "[AUDIO] Error loading Menu hover\n");
+	if (!LoadAudio(MENU_SELECT_FILE, ID_MENU_SELECT, 100)) fprintf(stderr, "[AUDIO] Error loading Menu Select\n");
+
+	fprintf(stderr, "sorrolls carregats\n");
 
 	// 2. CONFIGURAR VOLÚMENES (Opcional, ajusta a tu gusto de 0 a 100)
-	SetVolume(ID_MUSIC, 20);      // Música de fondo suave
-	SetVolume(ID_STEPS, 100);      // Pasos audibles pero no estruendosos
-	SetVolume(ID_DOOR, 100);      // Puerta fuerte
-	SetVolume(ID_ITEM, 90);       // Item destacado
-	SetVolume(ID_QUACK, 100);     // Pato al máximo (si es un easter egg)
-	SetVolume(ID_FLASH_ON, 60);   // Linterna sutil
-	SetVolume(ID_FLASH_OFF, 60);
 
+	// Aplicar el nuevo volumen de efectos a todos los canales SFX
+	SetVolume(ID_MUSIC, g_musicVolume * 0.15);
+	/////
+	// Aplicamos volumen máster a todos los demás efectos usando el array
+	for (size_t i = 0; i < SFX_COUNT; ++i) {
+		SetVolume(SFX_IDS[i], g_sfxVolume);
+	}
 
 	// 3. ARRANCAR MÚSICA
+
 	PlayMusicLoop(ID_MUSIC);
 
 	glfwSwapInterval(0);
@@ -10581,6 +11119,13 @@ int main(void)
 	unsigned long long frame = 0;
 	initTextures();
 	InicialitzarImGuiFonts();
+	LoadAllFonts();
+
+	AfegirItemInventari(
+		"candelabre",
+		"Candelabre",
+		"Una espelma feta servir, encara util per iluminar."
+	);
 
 	// Loop until the user closes the window
 	while (!glfwWindowShouldClose(window))
@@ -10615,45 +11160,43 @@ int main(void)
 			FPV_SetMouseCapture(false);
 			renderFinalJoc(window);
 		}
-		else if (act_state == GameState::LOADING)
+		else if (act_state == GameState::LOADING) //pattata
 		{
 			g_FVP_move = false;
-			if (renderLoading(window))
+
+			if (!fpv_started)
 			{
-				if (fpv_started)
-				{
-					act_state = GameState::GAME;
-					FPV_SetMouseCapture(true);
-				}
+				renderLoading(window, 0.0f);
 
-				if (!fpv_started) g_FPVInitApplied = true; initExtraTextures();
+				InitHandQuad();
+				renderLoading(window, 0.2f);
 
+				InitHandAnimations();
+				renderLoading(window, 0.4f);
+
+				ApplyPhongObraDinnDefaults();
+				renderLoading(window, 0.5f);
+
+				InitAigua();
+				renderLoading(window, 0.6f);
+
+				EnterFPV();
+				renderLoading(window, 0.8f);
+
+				initExtraTextures();
+				InitMatapatos();
+				InitMatapatosGeometry();
+				renderLoading(window, 1.0f);
+
+				g_FPVInitApplied = true;
+				fpv_started = true;
+			}
+			if (fpv_started)
+			{
+				act_state = GameState::GAME;
+				FPV_SetMouseCapture(true);
 			}
 		}
-		else if (act_state == GameState::INSPECTING)
-		{
-			FPV_SetMouseCapture(true);
-			g_FVP_move = true;
-
-			printf("Sobel actual: %d\n", g_SobelOn);
-			// Events de GLFW
-			glfwPollEvents();
-
-			// ─────────────────────────────────────────────────────────────
-			// 1) ESCENA 3D + SOBEL (sense ImGui) → OnPaint
-			//    (aquí es fa el glClear, Draw sala, props, Sobel, mà, etc.)
-			// ─────────────────────────────────────────────────────────────
-			OnPaint(window);
-
-			// ─────────────────────────────────────────────────────────────
-			// 4) SWAP BUFFERS → presentem escena 3D + HUD ImGui
-			// ─────────────────────────────────────────────────────────────
-			glfwMakeContextCurrent(window);
-			//glfwSwapBuffers(window);
-
-			renderItemDescription(window, "Nombre Item", "Descripcion Item");
-		}
-		
 		else if (act_state == GameState::GAME)
 		{
 			// Si NO hi ha cap HUD "gran" obert → podem moure'ns en FPV
@@ -10667,6 +11210,12 @@ int main(void)
 				// Cofre, inventari o mapa de palanques oberts → bloquejar FPV
 				FPV_SetMouseCapture(false);
 				g_FVP_move = false;
+			}
+
+			if (!g_IntroHandsPlayed)
+			{
+				StartHandAnimation(14);     // “oh dios mio mis manos”
+				g_IntroHandsPlayed = true;  // para que no se repita nunca más
 			}
 
 
