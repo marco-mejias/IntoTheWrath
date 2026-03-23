@@ -36,6 +36,8 @@ I architected an audio subsystem directly integrated into the engine's update lo
 Audio events are tied directly to the game's internal state manager. Triggers include interacting with puzzles, unlocking chests, or opening doors. 
 The system separately manages constant ambient tracks (such as ocean waves) and immediate sound effects.
 
+![Image](https://github.com/user-attachments/assets/c3984ec0-3463-4472-9a0e-414891c455a3)
+
 ### 4. UI & Settings Implementation
 Helped build the user interface and developer settings menus utilizing ImGui, allowing real-time adjustments of technical parameters like volume and brightness without breaking the game loop.
 
@@ -61,13 +63,15 @@ A unique technical feature is the integration of distinct 2D elements within the
 
 Beyond system architecture, I led the core game design and structured the logical flow of the Escape Room, which implements several distinct gameplay mechanics:
 
-![Image](https://github.com/user-attachments/assets/c3984ec0-3463-4472-9a0e-414891c455a3)
+![Image](https://github.com/user-attachments/assets/d5c23efb-d907-4ea3-b10f-82e051f292aa) ![Image](https://github.com/user-attachments/assets/0320c4da-6359-4246-b19a-4e89c4e63d50)
 
 * **Inventory & State:** An internal state manager tracks collected items (keys, tools) and validates interaction queries (like checking if the player holds a key before unlocking a door).
 * **The Lever Puzzle:** An environmental puzzle where the player must correlate a 2D texture map overlay with a physical 3D array of levers, validating binary states (On/Off).
 * **Symbolic Mathematics:** Puzzles requiring players to decipher numerical values from environmental textures (paintings) and input codes into combination locks.
 * **"Matapatos" Minigame:** A completely separate game mode implemented within the engine featuring custom logic for target movement, collision detection by raycast, and win/lose conditions that trigger specific hand animations.
-* **Inspection Minigame:** A series of multiple objects that the player must inspect in a separate view to find the codes hidden in them. 
+* **Inspection Minigame:** A series of multiple objects that the player must inspect in a separate view to find the codes hidden in them.
+
+![Image](https://github.com/user-attachments/assets/ed3a24a0-7cc5-47a2-bcbb-5469b2e7aaf1)
   
 ### Content & Level Design
 The game takes place on a multi-deck ship. The level design is vertical and interconnected:
