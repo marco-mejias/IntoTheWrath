@@ -6,7 +6,7 @@ This project served as a deep dive into low-level graphics and C++ architecture,
 
 ## 🛠️ Technologies 
 
-* Visual Studio Code
+* Visual Studio Community 2022
 * GitHub 
 * Google Drive
 * Blender
