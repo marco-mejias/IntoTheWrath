@@ -52,18 +52,19 @@ The codebase is structured to separate low-level OpenGL abstraction from high-le
 * **State Management:** A finite state machine (FSM) handles the transition between different gameplay modes (Exploration, Puzzle Interface, Minigame, Game Over).
 * **Debug Tools:** Extensive integration of ImGui allows for runtime modification of shader parameters (Sobel strength, dithering matrix size, light intensity) and simplified level navigation during development.
 
+
 ### 2D/3D Hybrid Integration
 A unique technical feature is the integration of distinct 2D elements within the 3D world, inspired by the surrealist style of *Hylics*.
 * **Hand Animation System:** The first-person hands are not 3D meshes but 2D sprite sheets rendered on a quad in Normalized Device Coordinates (NDC). This ensures they always render on top of the geometry while maintaining correct aspect ratios. UV offsets are updated dynamically to play animations (clapping, holding keys, lighting candles).
 * **UI Overlays:** Interfaces for maps and puzzles are rendered as overlays that pause the 3D update loop while keeping the rendering loop active.
+
+![Image](https://github.com/user-attachments/assets/d5c23efb-d907-4ea3-b10f-82e051f292aa) ![Image](https://github.com/user-attachments/assets/0320c4da-6359-4246-b19a-4e89c4e63d50)
 
 ---
 
 ## 🧩 Game Design & Level Flow
 
 Beyond system architecture, I led the core game design and structured the logical flow of the Escape Room, which implements several distinct gameplay mechanics:
-
-![Image](https://github.com/user-attachments/assets/d5c23efb-d907-4ea3-b10f-82e051f292aa) ![Image](https://github.com/user-attachments/assets/0320c4da-6359-4246-b19a-4e89c4e63d50)
 
 * **Inventory & State:** An internal state manager tracks collected items (keys, tools) and validates interaction queries (like checking if the player holds a key before unlocking a door).
 * **The Lever Puzzle:** An environmental puzzle where the player must correlate a 2D texture map overlay with a physical 3D array of levers, validating binary states (On/Off).
